@@ -49,6 +49,7 @@ Client/x64
 *.sdf
 *.VC.db
 *.VC.opendb
+*.DS_Store
 
 # Precompiled Assets
 SourceArt/**/*.png
@@ -83,4 +84,6 @@ Plugins/**/Intermediate/*
 DerivedDataCache/*
 
 .idea/
+.vscode/
+
 
