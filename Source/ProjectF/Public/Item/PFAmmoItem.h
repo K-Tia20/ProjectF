@@ -3,17 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
-#include "PFCharacter.generated.h"
+#include "PFBaseItem.h"
+#include "PFAmmoItem.generated.h"
 
 UCLASS()
-class PROJECTF_API APFCharacter : public ACharacter
+class PROJECTF_API APFAmmoItem : public APFBaseItem
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
-	APFCharacter();
+	// Sets default values for this actor's properties
+	APFAmmoItem();
 
 protected:
 	// Called when the game starts or when spawned
@@ -22,7 +22,4 @@ protected:
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 };

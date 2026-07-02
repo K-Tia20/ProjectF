@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/HUD.h"
-#include "PFMainHud.generated.h"
+#include "Engine/GameInstance.h"
+#include "PFGameInstance.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class PROJECTF_API APFMainHud : public AHUD
+class PROJECTF_API UPFGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 };

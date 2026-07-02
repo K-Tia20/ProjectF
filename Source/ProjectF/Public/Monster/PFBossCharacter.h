@@ -3,27 +3,26 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
-#include "PFPlayerCharacter.generated.h"
+#include "PFMonsterCharacter.h"
+#include "PFBossCharacter.generated.h"
 
 UCLASS()
-class PROJECTF_API APFPlayerCharacter : public APawn
+class PROJECTF_API APFBossCharacter : public APFMonsterCharacter
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this pawn's properties
-	APFPlayerCharacter();
+	// Sets default values for this character's properties
+	APFBossCharacter();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
 };

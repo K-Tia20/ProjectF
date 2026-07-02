@@ -1,34 +1,32 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "PFPlayerCharacter.h"
+#include "Monster/PFBossCharacter.h"
+
 
 // Sets default values
-APFPlayerCharacter::APFPlayerCharacter()
+APFBossCharacter::APFBossCharacter()
 {
- 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 // Called when the game starts or when spawned
-void APFPlayerCharacter::BeginPlay()
+void APFBossCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
 }
 
 // Called every frame
-void APFPlayerCharacter::Tick(float DeltaTime)
+void APFBossCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 // Called to bind functionality to input
-void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void APFBossCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
