@@ -53,7 +53,22 @@ void APFMonsterCharacter::Attack()
 		return;
 	}
 	
+	if (!CanAttack)
+	{
+		return;
+	}
+	
+	CanAttack= false;
+	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] Attack"));
+	
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&APFMonsterCharacter::ResetAttack,
+		AttackCooldown,
+		false
+		);
 }
 
 void APFMonsterCharacter::Die()
@@ -68,3 +83,11 @@ void APFMonsterCharacter::Die()
 	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die"));
 }
+
+void APFMonsterCharacter::ResetAttack()
+{
+	CanAttack = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Ready"));
+}
+
