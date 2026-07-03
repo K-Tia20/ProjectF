@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+
 
 #pragma once
 
@@ -12,17 +12,49 @@ class PROJECTF_API APFMonsterCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
+	
 	APFMonsterCharacter();
 
 protected:
-	// Called when the game starts or when spawned
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
+	float MaxHP = 100.f;
+	
+	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category="Monster")
+	float CurrentHP;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
+	float AttackDamage = 20.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
+	float AttackRange = 150.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
+	float AttackCooldown = 1.5f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
+	bool IsDead = false;
+	
+	
+	
+	
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
+	
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
+	
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	UFUNCTION(BlueprintCallable)
+	void TakeDamageFromMonster(float DamageAmount);
+	
+	UFUNCTION(BlueprintCallable)
+	void Attack();
+	
+	UFUNCTION(BlueprintCallable)
+	void Die();
+	
+	
 };
