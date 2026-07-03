@@ -4,22 +4,46 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Engine/DataTable.h"
 #include "PFWaveManager.generated.h"
+
+USTRUCT(BlueprintType)
+struct FPFWaveData : public FTableRowBase
+{
+	GENERATED_BODY()
+
+public:
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+	int32 Level;        
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+	int32 Wave;          
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+	TSubclassOf<APawn> MonsterClass; 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+	int32 TotalSpawnCount; 
+};
+
+
 
 UCLASS()
 class PROJECTF_API APFWaveManager : public AActor
 {
 	GENERATED_BODY()
-
-public:
-	// Sets default values for this actor's properties
+    
+public:	
 	APFWaveManager();
 
+	void CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave);
+
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+private:
+
+	UPROPERTY(EditAnywhere, Category = "Wave Data")
+	UDataTable* PFWaveDataTable;
+
+	UPROPERTY()
+	class APFSpawnManager* PFSpawnManager;
 };

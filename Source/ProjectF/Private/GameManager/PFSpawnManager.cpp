@@ -2,25 +2,64 @@
 
 
 #include "GameManager/PFSpawnManager.h"
+#include "GameManager/PFPortalActor.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
 APFSpawnManager::APFSpawnManager()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
-// Called when the game starts or when spawned
+
+
+
+
+
 void APFSpawnManager::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	TArray<AActor*> FoundActors;
+	
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APFPortalActor::StaticClass(), FoundActors);
+		
+	for (AActor* Actor : FoundActors)
+	{
+		APFPortalActor* Portal = Cast<APFPortalActor>(Actor);
+		if (Portal)
+		{
+			PFPortalActors.Add(Portal);
+		}
+	}
+
 }
 
-// Called every frame
-void APFSpawnManager::Tick(float DeltaTime)
+
+
+
+
+void APFSpawnManager::SpawnWaveMonsters(TSubclassOf<APawn> MonsterClass, int32 TotalAmount)
 {
-	Super::Tick(DeltaTime);
+	if (PFPortalActors.Num() == 0 || MonsterClass == nullptr || TotalAmount <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("스폰 조건이 올바르지 않습니다. (포탈 개수: %d)"), PFPortalActors.Num());
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("%d마리 스폰 시작!"), TotalAmount);
+
+	for (int32 i = 0; i < TotalAmount; ++i)
+	{
+		int32 RandomPortalIndex = FMath::RandRange(0, PFPortalActors.Num() - 1);
+		APFPortalActor* ChosenPortal = PFPortalActors[RandomPortalIndex];
+
+		if (ChosenPortal)
+		{
+			ChosenPortal->SpawnMonster(MonsterClass);
+		}
+	}
 }
+
 
