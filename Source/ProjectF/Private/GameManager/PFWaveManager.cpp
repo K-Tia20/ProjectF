@@ -2,25 +2,57 @@
 
 
 #include "GameManager/PFWaveManager.h"
+#include "GameManager/PFSpawnManager.h"
+#include "Kismet/GameplayStatics.h"
 
 
-// Sets default values
+
 APFWaveManager::APFWaveManager()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+	
 }
 
-// Called when the game starts or when spawned
 void APFWaveManager::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), APFSpawnManager::StaticClass());
+	PFSpawnManager = Cast<APFSpawnManager>(FoundActor);	
 }
 
-// Called every frame
-void APFWaveManager::Tick(float DeltaTime)
+
+void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 {
-	Super::Tick(DeltaTime);
-}
+	if (PFWaveDataTable == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("PFWaveManager: 데이터 테이블이 등록되지 않았습니다!"));
+		return;
+	}
+	if (PFSpawnManager == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("PFWaveManager: PFSpawnManager를 찾을 수 없습니다!"));
+		return;
+	}
 
+	TArray<FName> RowNames = PFWaveDataTable->GetRowNames();
+
+	for (const FName& RowName : RowNames)
+	{
+		FPFWaveData* WaveData = PFWaveDataTable->FindRow<FPFWaveData>(RowName, TEXT(""));
+
+		if (WaveData)
+		{
+			if (WaveData->Level == CurrentLevel && WaveData->Wave == CurrentWave)
+			{
+				UE_LOG(LogTemp, Log, TEXT("데이터 테이블 매칭 성공! 레벨: %d, 웨이브: %d, 총 스폰수: %d"), 
+					CurrentLevel, CurrentWave, WaveData->TotalSpawnCount);
+
+				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterClass, WaveData->TotalSpawnCount);
+				return; 
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("PFWaveManager: 레벨 %d, 웨이브 %d에 해당하는 데이터가 테이블에 없습니다."), CurrentLevel, CurrentWave);
+}

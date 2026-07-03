@@ -1,32 +1,93 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Monster/PFMonsterCharacter.h"
 
 
-// Sets default values
+
 APFMonsterCharacter::APFMonsterCharacter()
 {
-	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-// Called when the game starts or when spawned
 void APFMonsterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	CurrentHP = MaxHP;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] BeginPlay / HP: %f"), CurrentHP);
+	
 }
 
-// Called every frame
 void APFMonsterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-// Called to bind functionality to input
 void APFMonsterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
+
+void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount)
+{
+	if (IsDead)
+	{
+		return;
+	}
+	
+	CurrentHP -= DamageAmount;
+	
+	UE_LOG(LogTemp,Warning,TEXT("[Monster] Hit! Damage: %f / HP: %f"),DamageAmount,CurrentHP);
+	
+	if (CurrentHP <= 0.f)
+	{
+		Die();
+	}
+}
+
+void APFMonsterCharacter::Attack()
+{
+	if (IsDead)
+	{
+		return;
+	}
+	
+	if (!CanAttack)
+	{
+		return;
+	}
+	
+	CanAttack= false;
+	
+	UE_LOG(LogTemp,Warning,TEXT("[Monster] Attack"));
+	
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&APFMonsterCharacter::ResetAttack,
+		AttackCooldown,
+		false
+		);
+}
+
+void APFMonsterCharacter::Die()
+{
+	if (IsDead)
+	{
+		return;
+	}
+	
+	IsDead = true;
+	CurrentHP = 0.f;
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die"));
+}
+
+void APFMonsterCharacter::ResetAttack()
+{
+	CanAttack = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Ready"));
 }
 
