@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "InputActionValue.h" // 필수 추가
+#include "InputActionValue.h"
 #include "PFPlayerCharacter.generated.h"
 
 class USpringArmComponent;
@@ -18,10 +18,20 @@ class PROJECTF_API APFPlayerCharacter : public ACharacter
 public:
 	APFPlayerCharacter();
 
+	// [추가] 현재 체력 상태를 저장할 변수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float Health = 100.0f;
+
+	// [추가] 최대 체력 설정값
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float MaxHealth = 100.0f;
+
+	// [추가] 피격 시 엔진에서 자동으로 호출되는 기본 함수 오버라이드
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
 protected:
 	virtual void BeginPlay() override;
 
-	// 향상된 입력 함수
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 
@@ -35,7 +45,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
-	// 향상된 입력 에셋 (블루프린트에서 연결할 변수들)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
 
