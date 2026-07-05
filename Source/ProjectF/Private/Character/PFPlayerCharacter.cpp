@@ -9,28 +9,43 @@ APFPlayerCharacter::APFPlayerCharacter()
 {
     PrimaryActorTick.bCanEverTick = false;
 
-    // 1. 캐릭터가 마우스 회전을 직접 따라가지 않게 설정 (3인칭 필수)
     bUseControllerRotationPitch = false;
-    bUseControllerRotationYaw = false;
+    bUseControllerRotationYaw = true; 
     bUseControllerRotationRoll = false;
 
-    // 2. 캐릭터가 이동 방향으로 몸을 돌리게 설정 (배그 방식)
-    GetCharacterMovement()->bOrientRotationToMovement = true; 
+    GetCharacterMovement()->bOrientRotationToMovement = false; 
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); 
-    GetCharacterMovement()->JumpZVelocity = 600.f;
+    GetCharacterMovement()->JumpZVelocity = 450.f;
     GetCharacterMovement()->AirControl = 0.2f;
 
-    // 3. 카메라 붐 설정 (숄더뷰를 위해 살짝 오른쪽으로 오프셋)
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
-    CameraBoom->TargetArmLength = 300.0f; // 기본 3인칭 거리
-    CameraBoom->bUsePawnControlRotation = true; // 카메라가 마우스 입력을 따라 회전
-    CameraBoom->SocketOffset = FVector(0.0f, 60.0f, 60.0f); // 약간 오른쪽 위에서 보는 시점
+    CameraBoom->TargetArmLength = 300.0f; 
+    CameraBoom->bUsePawnControlRotation = true; 
+    CameraBoom->SocketOffset = FVector(0.0f, 60.0f, 60.0f); 
 
-    // 4. 팔로우 카메라 설정
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-    FollowCamera->bUsePawnControlRotation = false; // 카메라는 스프링암의 회전을 따름
+    FollowCamera->bUsePawnControlRotation = false; 
+}
+
+// [추가] 피격 로직: 대미지 값을 받아 현재 체력에서 차감
+float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
+{
+    float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+    Health -= ActualDamage;
+
+    // [추가] 체력이 0 미만으로 내려가지 않도록 제한
+    if (Health <= 0.0f)
+    {
+        Health = 0.0f;
+    }
+
+    // [추가] 로그를 통해 실시간 체력 확인
+    UE_LOG(LogTemp, Warning, TEXT("현재 체력: %f"), Health);
+
+    return ActualDamage;
 }
 
 void APFPlayerCharacter::BeginPlay()
@@ -59,11 +74,16 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 void APFPlayerCharacter::Move(const FInputActionValue& Value)
 {
+    // [추가] 공중에 있거나 착지 애니메이션 중에는 이동 입력을 차단하여 문워크 방지
+    if (GetCharacterMovement()->IsFalling()) 
+    {
+        return; 
+    }
+
     FVector2D MovementVector = Value.Get<FVector2D>();
 
     if (Controller != nullptr)
     {
-       // 카메라가 보는 방향을 기준으로 상대적 이동
        const FRotator Rotation = Controller->GetControlRotation();
        const FRotator YawRotation(0, Rotation.Yaw, 0);
 
