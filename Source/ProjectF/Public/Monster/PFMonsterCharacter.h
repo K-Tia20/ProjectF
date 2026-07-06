@@ -73,7 +73,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
 	UFUNCTION(BlueprintCallable)
-	void TakeDamageFromMonster(float DamageAmount);
+	void TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser = nullptr);
 	
 	UFUNCTION(BlueprintCallable)
 	void Attack();
@@ -81,5 +81,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void Die();
 	
+	virtual void OnDamaged(AActor* DamageCauser);
 	
 };
