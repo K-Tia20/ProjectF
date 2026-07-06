@@ -10,7 +10,7 @@ APFGameState::APFGameState()
 	CurrentLevel = 1;
 	CurrentWave = 1;
 	RemainingMonsters = 0;
-	RemainingTime = 300;
+	RemainingTime = 300.0f;
 }
 
 

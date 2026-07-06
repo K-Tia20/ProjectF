@@ -40,25 +40,35 @@ void APFSpawnManager::BeginPlay()
 
 
 
-void APFSpawnManager::SpawnWaveMonsters(TSubclassOf<APawn> MonsterClass, int32 TotalAmount)
+void APFSpawnManager::SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnList)
 {
-	if (PFPortalActors.Num() == 0 || MonsterClass == nullptr || TotalAmount <= 0)
+	// [바깥쪽 루프]: 영수증에 적힌 몬스터 종류를 하나씩 꺼내서 확인합니다.
+	if (PFPortalActors.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("스폰 조건이 올바르지 않습니다. (포탈 개수: %d)"), PFPortalActors.Num());
+		UE_LOG(LogTemp, Error, TEXT("PFSpawnManager: 월드에 배치된 PFPortalActor가 없습니다!"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("%d마리 스폰 시작!"), TotalAmount);
+	// 포탈들을 순서대로 골고루 쓰기 위한 인덱스 변수
+	int32 PortalIndex = 0;
 
-	for (int32 i = 0; i < TotalAmount; ++i)
+	// [바깥쪽 루프]: 기획서(SpawnList)에서 몬스터 종류를 하나씩 꺼냅니다. (예: 느린 좀비)
+	for (const FMonsterSpawnInfo& SpawnInfo : SpawnList)
 	{
-		int32 RandomPortalIndex = FMath::RandRange(0, PFPortalActors.Num() - 1);
-		APFPortalActor* ChosenPortal = PFPortalActors[RandomPortalIndex];
-
-		if (ChosenPortal)
+		if (SpawnInfo.MonsterClass == nullptr) continue;
+		for (int32 i = 0; i < SpawnInfo.SpawnCount; ++i)
 		{
-			ChosenPortal->SpawnMonster(MonsterClass);
+			APFPortalActor* TargetPortal = PFPortalActors[PortalIndex];
+			if (TargetPortal)
+			{
+				TSubclassOf<APawn> PawnClass = Cast<UClass>(SpawnInfo.MonsterClass);
+				
+				TargetPortal->SpawnMonster(PawnClass);
+			}
+			PortalIndex = (PortalIndex + 1) % PFPortalActors.Num();
 		}
+		UE_LOG(LogTemp, Log, TEXT("PFSpawnManager: %s 몬스터 %d마리 스폰 완료!"), 
+			*SpawnInfo.MonsterClass->GetName(), SpawnInfo.SpawnCount);
 	}
 }
 

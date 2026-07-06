@@ -53,7 +53,7 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 					PFGameState->SetRemainingMonsters(WaveData->TotalSpawnCount);
 				}
 
-				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterClass, WaveData->TotalSpawnCount);
+				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterSpawnList);
 				return; 
 			}
 		}

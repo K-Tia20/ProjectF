@@ -20,17 +20,21 @@ public:
 	APFGameState();
 	
 	void SetCurrentLevel(int32 NewLevel) { CurrentLevel = NewLevel; }
+	UFUNCTION(BlueprintCallable, Category = "Game Progress")
 	int32 GetCurrentLevel() const { return CurrentLevel; }
 	
 	void SetCurrentWave(int32 NewWave) { CurrentWave = NewWave; }
+	UFUNCTION(BlueprintCallable, Category = "Game Progress")
 	int32 GetCurrentWave() const { return CurrentWave; }
 	
 	void SetRemainingMonsters(int32 Amount) { RemainingMonsters = Amount; }
 	void DecreaseMonsterCount() { RemainingMonsters = FMath::Max(0, RemainingMonsters - 1); }
+	UFUNCTION(BlueprintCallable, Category = "Game Progress")
 	int32 GetRemainingMonsters() const { return RemainingMonsters; }
 	
 	void SetRemainingTime(float NewTime) { RemainingTime = NewTime; }
-	int32 GetRemainingTime() const { return RemainingTime; }
+	UFUNCTION(BlueprintCallable, Category = "Game Progress")
+	float GetRemainingTime() const { return RemainingTime; }
 	
 
 	
@@ -45,5 +49,5 @@ private:
 	int32 RemainingMonsters;
 
 	UPROPERTY(VisibleAnywhere, Category = "Game Progress")
-	int32 RemainingTime;
+	float RemainingTime;
 };
