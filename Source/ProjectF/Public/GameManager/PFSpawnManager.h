@@ -4,7 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "PFWaveManager.h"
+
 #include "PFSpawnManager.generated.h"
+
+
+class APFPortalActor;
 
 UCLASS()
 class PROJECTF_API APFSpawnManager : public AActor
@@ -12,14 +17,20 @@ class PROJECTF_API APFSpawnManager : public AActor
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
+
 	APFSpawnManager();
 
+	void SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnList);
+
+
 protected:
-	// Called when the game starts or when spawned
+	
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	
+	UPROPERTY()
+	TArray<APFPortalActor*> PFPortalActors;
+	UPROPERTY()
+	TArray<class APFPortalActor*> BossPortalActors;
 };

@@ -2,25 +2,88 @@
 
 
 #include "GameManager/PFSpawnManager.h"
+#include "GameManager/PFPortalActor.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
 APFSpawnManager::APFSpawnManager()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
-// Called when the game starts or when spawned
+
+
+
+
+
 void APFSpawnManager::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	TArray<AActor*> FoundActors;
+	
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APFPortalActor::StaticClass(), FoundActors);
+		
+	for (AActor* Actor : FoundActors)
+	{
+		APFPortalActor* Portal = Cast<APFPortalActor>(Actor);
+		if (Portal)
+		{
+			PFPortalActors.Add(Portal);
+		}
+	}
+
 }
 
-// Called every frame
-void APFSpawnManager::Tick(float DeltaTime)
+
+
+
+
+void APFSpawnManager::SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnList)
 {
-	Super::Tick(DeltaTime);
+	PFPortalActors.Empty();
+	BossPortalActors.Empty();
+
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APFPortalActor::StaticClass(), FoundActors);
+        
+	for (AActor* Actor : FoundActors)
+	{
+		APFPortalActor* Portal = Cast<APFPortalActor>(Actor);
+		if (Portal)
+		{
+			if (Portal->GetClass()->GetName().Contains(TEXT("Boss")))
+			{
+				BossPortalActors.Add(Portal);
+			}
+			else
+			{
+				PFPortalActors.Add(Portal);
+			}
+		}
+	}
+
+	for (const FMonsterSpawnInfo& MonsterInfo : SpawnList)
+	{
+		TArray<APFPortalActor*>& TargetPortals = MonsterInfo.bIsBoss ? BossPortalActors : PFPortalActors;
+
+		if (TargetPortals.Num() == 0)
+		{
+			UE_LOG(LogTemp, Error, TEXT("SpawnManager: %s 좀비를 스폰해야 하는데 지정된 포탈이 맵에 없습니다!"), 
+				MonsterInfo.bIsBoss ? TEXT("보스") : TEXT("일반"));
+			continue;
+		}
+
+		for (int32 i = 0; i < MonsterInfo.SpawnCount; ++i)
+		{
+			int32 RandomIndex = FMath::RandRange(0, TargetPortals.Num() - 1);
+			if (TargetPortals[RandomIndex])
+			{
+				TargetPortals[RandomIndex]->SpawnMonster(MonsterInfo.MonsterClass);
+			}
+		}
+	}
 }
+
 
