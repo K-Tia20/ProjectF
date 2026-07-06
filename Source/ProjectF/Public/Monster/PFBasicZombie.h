@@ -34,6 +34,22 @@ protected:
 	
 	void ChasePlayer();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Zombie")
+	float SightAngle = 90.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Zombie")
+	float RequiredDetectTime = 1.0f;
+
+	float CurrentDetectTime = 0.f;
+
+	bool IsPlayerInSight(AActor* Player);
+
+	virtual void OnDamaged(AActor* DamageCauser) override;
+	
+	UPROPERTY(EditAnywhere, Category="Debug")
+	bool bDrawDebug = true;
+	
+	
 public:
 	
 

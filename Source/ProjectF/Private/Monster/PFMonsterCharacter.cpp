@@ -43,7 +43,7 @@ void APFMonsterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
-void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount)
+void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser)
 {
 	if (IsDead)
 	{
@@ -53,6 +53,8 @@ void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount)
 	CurrentHP -= DamageAmount;
 	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] Hit! Damage: %f / HP: %f"),DamageAmount,CurrentHP);
+	
+	OnDamaged(DamageCauser);
 	
 	if (CurrentHP <= 0.f)
 	{
@@ -142,4 +144,9 @@ void APFMonsterCharacter::OnAttackBoxOverlap(
 		return;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Hit: %s"), *OtherActor->GetName());
+}
+
+void APFMonsterCharacter::OnDamaged(AActor* DamageCauser)
+{
+	
 }
