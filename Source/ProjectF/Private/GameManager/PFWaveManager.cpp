@@ -53,7 +53,7 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 					PFGameState->SetRemainingMonsters(WaveData->TotalSpawnCount);
 				}
 
-				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterClass, WaveData->TotalSpawnCount);
+				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterSpawnList);
 				return; 
 			}
 		}
@@ -61,5 +61,3 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 
 	UE_LOG(LogTemp, Warning, TEXT("PFWaveManager: 레벨 %d, 웨이브 %d에 해당하는 데이터가 테이블에 없습니다."), CurrentLevel, CurrentWave);
 }
-// 1
-// asdfasdf

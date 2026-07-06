@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "PFWaveManager.h"
+
 #include "PFSpawnManager.generated.h"
 
 
@@ -18,7 +20,7 @@ public:
 
 	APFSpawnManager();
 
-	void SpawnWaveMonsters(TSubclassOf<APawn> MonsterClass, int32 TotalAmount);
+	void SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnList);
 
 
 protected:

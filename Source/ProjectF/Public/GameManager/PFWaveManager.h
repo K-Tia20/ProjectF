@@ -1,27 +1,41 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
+#include "../Monster/PFMonsterCharacter.h"
+
 #include "PFWaveManager.generated.h"
 
+
 USTRUCT(BlueprintType)
-struct FPFWaveData : public FTableRowBase
+struct FMonsterSpawnInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	TSubclassOf<class APFMonsterCharacter> MonsterClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	int32 SpawnCount = 0;
+};
+
+USTRUCT(BlueprintType)
+struct PROJECTF_API FPFWaveData : public FTableRowBase
 {
 	GENERATED_BODY()
 
 public:
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
-	int32 Level;        
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
-	int32 Wave;          
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
-	TSubclassOf<APawn> MonsterClass; 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
-	int32 TotalSpawnCount; 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	int32 Level = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	int32 Wave = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	TArray<FMonsterSpawnInfo> MonsterSpawnList;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	int32 TotalSpawnCount = 0;
 };
 
 
