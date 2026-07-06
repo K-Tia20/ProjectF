@@ -19,6 +19,9 @@ struct FMonsterSpawnInfo
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
 	int32 SpawnCount = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsBoss;
 };
 
 USTRUCT(BlueprintType)
@@ -34,8 +37,7 @@ public:
 	int32 Wave = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
 	TArray<FMonsterSpawnInfo> MonsterSpawnList;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
-	int32 TotalSpawnCount = 0;
+	
 };
 
 
@@ -48,8 +50,10 @@ class PROJECTF_API APFWaveManager : public AActor
 public:	
 	APFWaveManager();
 
-	void CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave);
+	void CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave, class APFSpawnManager* InSpawnManager);
 
+	void SetWaveDataTable(UDataTable* NewDataTable) { PFWaveDataTable = NewDataTable; }
+	
 protected:
 	virtual void BeginPlay() override;
 
