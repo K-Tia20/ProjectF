@@ -40,4 +40,7 @@ private:
 	APFGameState* PFGameState;
 	
 	FTimerHandle PFTimerHandle;
+	
+	UPROPERTY()
+	class APFWaveManager* PFWaveManager;
 };

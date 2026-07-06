@@ -3,6 +3,7 @@
 
 #include "GameManager/PFWaveManager.h"
 #include "GameManager/PFSpawnManager.h"
+#include "GameManager/PFGameState.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -47,6 +48,10 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 			{
 				UE_LOG(LogTemp, Log, TEXT("데이터 테이블 매칭 성공! 레벨: %d, 웨이브: %d, 총 스폰수: %d"), 
 					CurrentLevel, CurrentWave, WaveData->TotalSpawnCount);
+				if (APFGameState* PFGameState = GetWorld()->GetGameState<APFGameState>())
+				{
+					PFGameState->SetRemainingMonsters(WaveData->TotalSpawnCount);
+				}
 
 				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterClass, WaveData->TotalSpawnCount);
 				return; 
@@ -56,3 +61,5 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 
 	UE_LOG(LogTemp, Warning, TEXT("PFWaveManager: 레벨 %d, 웨이브 %d에 해당하는 데이터가 테이블에 없습니다."), CurrentLevel, CurrentWave);
 }
+// 1
+// asdfasdf

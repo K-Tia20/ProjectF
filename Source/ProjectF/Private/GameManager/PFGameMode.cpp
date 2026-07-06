@@ -3,7 +3,8 @@
 
 #include "GameManager/PFGameMode.h"
 #include "GameManager/PFGameState.h"
-
+#include "GameManager/PFWaveManager.h"
+#include "Kismet/GameplayStatics.h"
 
 
 APFGameMode::APFGameMode()
@@ -37,6 +38,15 @@ void APFGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	PFGameState = Cast<APFGameState>(GameState);
+	
+	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), APFWaveManager::StaticClass());
+	PFWaveManager = Cast<APFWaveManager>(FoundActor);
+
+	if (PFWaveManager == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("GameMode에 PFWaveManager가 할당되어 있지 않음"));
+	}
+	
 	if (PFGameState)
 	{
 		GetWorldTimerManager().SetTimer(PFTimerHandle, this, &APFGameMode::TimerCountDown, 0.1f, false);
@@ -74,7 +84,11 @@ void APFGameMode::StartWave()
 	int32 CurWave = PFGameState->GetCurrentWave();
 
 	UE_LOG(LogTemp, Log, TEXT("Level %d - Wave %d 시작!"), CurLevel, CurWave);
-	PFGameState->SetRemainingMonsters(5); 
+	
+	if (PFWaveManager)
+	{
+		PFWaveManager->CheckAndSpawnWave(CurLevel, CurWave);
+	}
 }
 
 
