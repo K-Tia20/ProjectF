@@ -17,24 +17,12 @@ APFWaveManager::APFWaveManager()
 void APFWaveManager::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), APFSpawnManager::StaticClass());
-	PFSpawnManager = Cast<APFSpawnManager>(FoundActor);	
 }
 
 
-void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
+void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave, class APFSpawnManager* InSpawnManager)
 {
-	if (PFWaveDataTable == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("PFWaveManager: 데이터 테이블이 등록되지 않았습니다!"));
-		return;
-	}
-	if (PFSpawnManager == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("PFWaveManager: PFSpawnManager를 찾을 수 없습니다!"));
-		return;
-	}
+	if (PFWaveDataTable == nullptr || InSpawnManager == nullptr) return;
 
 	TArray<FName> RowNames = PFWaveDataTable->GetRowNames();
 
@@ -46,14 +34,21 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 		{
 			if (WaveData->Level == CurrentLevel && WaveData->Wave == CurrentWave)
 			{
-				UE_LOG(LogTemp, Log, TEXT("데이터 테이블 매칭 성공! 레벨: %d, 웨이브: %d, 총 스폰수: %d"), 
-					CurrentLevel, CurrentWave, WaveData->TotalSpawnCount);
-				if (APFGameState* PFGameState = GetWorld()->GetGameState<APFGameState>())
+				int32 RunningTotal = 0;
+				for (const FMonsterSpawnInfo& MonsterInfo : WaveData->MonsterSpawnList)
 				{
-					PFGameState->SetRemainingMonsters(WaveData->TotalSpawnCount);
+					RunningTotal += MonsterInfo.SpawnCount;
 				}
 
-				PFSpawnManager->SpawnWaveMonsters(WaveData->MonsterSpawnList);
+				UE_LOG(LogTemp, Log, TEXT("데이터 테이블 매칭 성공! 레벨: %d, 웨이브: %d, 총 스폰수(자동연산): %d"), 
+				   CurrentLevel, CurrentWave, RunningTotal);
+
+				if (APFGameState* PFGameState = GetWorld()->GetGameState<APFGameState>())
+				{
+					PFGameState->SetRemainingMonsters(RunningTotal);
+				}
+
+				InSpawnManager->SpawnWaveMonsters(WaveData->MonsterSpawnList);
 				return; 
 			}
 		}
@@ -61,5 +56,3 @@ void APFWaveManager::CheckAndSpawnWave(int32 CurrentLevel, int32 CurrentWave)
 
 	UE_LOG(LogTemp, Warning, TEXT("PFWaveManager: 레벨 %d, 웨이브 %d에 해당하는 데이터가 테이블에 없습니다."), CurrentLevel, CurrentWave);
 }
-// 1
-// asdfasdf

@@ -43,4 +43,9 @@ private:
 	
 	UPROPERTY()
 	class APFWaveManager* PFWaveManager;
+	UPROPERTY()
+	class APFSpawnManager* PFSpawnManager;
+	
+	UPROPERTY(EditAnywhere, Category = "Wave Data")
+	UDataTable* WaveDataTableAsset;
 };

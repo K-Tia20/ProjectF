@@ -31,4 +31,6 @@ public:
 	
 	UPROPERTY()
 	TArray<APFPortalActor*> PFPortalActors;
+	UPROPERTY()
+	TArray<class APFPortalActor*> BossPortalActors;
 };

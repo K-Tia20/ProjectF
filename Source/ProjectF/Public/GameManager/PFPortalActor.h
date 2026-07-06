@@ -23,4 +23,6 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UStaticMeshComponent* PortalMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Portal")
+	bool bIsBossPortal = false;
 };
