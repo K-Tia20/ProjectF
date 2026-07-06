@@ -42,33 +42,47 @@ void APFSpawnManager::BeginPlay()
 
 void APFSpawnManager::SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnList)
 {
-	// [바깥쪽 루프]: 영수증에 적힌 몬스터 종류를 하나씩 꺼내서 확인합니다.
-	if (PFPortalActors.Num() == 0)
+	PFPortalActors.Empty();
+	BossPortalActors.Empty();
+
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APFPortalActor::StaticClass(), FoundActors);
+        
+	for (AActor* Actor : FoundActors)
 	{
-		UE_LOG(LogTemp, Error, TEXT("PFSpawnManager: 월드에 배치된 PFPortalActor가 없습니다!"));
-		return;
+		APFPortalActor* Portal = Cast<APFPortalActor>(Actor);
+		if (Portal)
+		{
+			if (Portal->GetClass()->GetName().Contains(TEXT("Boss")))
+			{
+				BossPortalActors.Add(Portal);
+			}
+			else
+			{
+				PFPortalActors.Add(Portal);
+			}
+		}
 	}
 
-	// 포탈들을 순서대로 골고루 쓰기 위한 인덱스 변수
-	int32 PortalIndex = 0;
-
-	// [바깥쪽 루프]: 기획서(SpawnList)에서 몬스터 종류를 하나씩 꺼냅니다. (예: 느린 좀비)
-	for (const FMonsterSpawnInfo& SpawnInfo : SpawnList)
+	for (const FMonsterSpawnInfo& MonsterInfo : SpawnList)
 	{
-		if (SpawnInfo.MonsterClass == nullptr) continue;
-		for (int32 i = 0; i < SpawnInfo.SpawnCount; ++i)
+		TArray<APFPortalActor*>& TargetPortals = MonsterInfo.bIsBoss ? BossPortalActors : PFPortalActors;
+
+		if (TargetPortals.Num() == 0)
 		{
-			APFPortalActor* TargetPortal = PFPortalActors[PortalIndex];
-			if (TargetPortal)
-			{
-				TSubclassOf<APawn> PawnClass = Cast<UClass>(SpawnInfo.MonsterClass);
-				
-				TargetPortal->SpawnMonster(PawnClass);
-			}
-			PortalIndex = (PortalIndex + 1) % PFPortalActors.Num();
+			UE_LOG(LogTemp, Error, TEXT("SpawnManager: %s 좀비를 스폰해야 하는데 지정된 포탈이 맵에 없습니다!"), 
+				MonsterInfo.bIsBoss ? TEXT("보스") : TEXT("일반"));
+			continue;
 		}
-		UE_LOG(LogTemp, Log, TEXT("PFSpawnManager: %s 몬스터 %d마리 스폰 완료!"), 
-			*SpawnInfo.MonsterClass->GetName(), SpawnInfo.SpawnCount);
+
+		for (int32 i = 0; i < MonsterInfo.SpawnCount; ++i)
+		{
+			int32 RandomIndex = FMath::RandRange(0, TargetPortals.Num() - 1);
+			if (TargetPortals[RandomIndex])
+			{
+				TargetPortals[RandomIndex]->SpawnMonster(MonsterInfo.MonsterClass);
+			}
+		}
 	}
 }
 

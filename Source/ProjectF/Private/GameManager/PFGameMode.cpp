@@ -4,6 +4,7 @@
 #include "GameManager/PFGameMode.h"
 #include "GameManager/PFGameState.h"
 #include "GameManager/PFWaveManager.h"
+#include "GameManager/PFSpawnManager.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -38,6 +39,15 @@ void APFGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	PFGameState = Cast<APFGameState>(GameState);
+	
+	{
+		PFWaveManager = GetWorld()->SpawnActor<APFWaveManager>(APFWaveManager::StaticClass());
+		PFSpawnManager = GetWorld()->SpawnActor<APFSpawnManager>(APFSpawnManager::StaticClass());
+		if (PFWaveManager && WaveDataTableAsset)
+		{
+			PFWaveManager->SetWaveDataTable(WaveDataTableAsset); 
+		}
+	}
 	
 	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), APFWaveManager::StaticClass());
 	PFWaveManager = Cast<APFWaveManager>(FoundActor);
@@ -78,17 +88,13 @@ void APFGameMode::TimerCountDown()
 
 void APFGameMode::StartWave()
 {
-	if (!PFGameState) return;
+	if (!PFGameState || !PFWaveManager || !PFSpawnManager) return;
 
 	int32 CurLevel = PFGameState->GetCurrentLevel();
 	int32 CurWave = PFGameState->GetCurrentWave();
 
-	UE_LOG(LogTemp, Log, TEXT("Level %d - Wave %d 시작!"), CurLevel, CurWave);
+		PFWaveManager->CheckAndSpawnWave(CurLevel, CurWave, PFSpawnManager);
 	
-	if (PFWaveManager)
-	{
-		PFWaveManager->CheckAndSpawnWave(CurLevel, CurWave);
-	}
 }
 
 
