@@ -7,7 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
 
-
+//최신2026-07-06
 APFBasicZombie::APFBasicZombie()
 {
 	PrimaryActorTick.bCanEverTick = false;

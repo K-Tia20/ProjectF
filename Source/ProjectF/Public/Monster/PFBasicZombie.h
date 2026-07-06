@@ -12,7 +12,7 @@ class PROJECTF_API APFBasicZombie : public APFMonsterCharacter
 
 public:
 	APFBasicZombie();
-
+//최신2026-07-06
 protected:
 	virtual void BeginPlay() override;
 	

@@ -13,7 +13,7 @@ class PROJECTF_API APFMonsterCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	
+	//최신2026-07-06
 	APFMonsterCharacter();
 
 protected:
@@ -52,18 +52,18 @@ protected:
 
 	FTimerHandle AttackBoxTimerHandle;
 	
-	/*UFUNCTION()
-	//void OnAttackBoxOverlap(
-	//	UPrimitiveComponent* OverlappedComponent,
-	//	AActor* OtherActor,
-	//	UPrimitiveComponent* OtherComp,
-	//	int32 OtherBodyIndex,
+	UFUNCTION()
+	void OnAttackBoxOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
 		bool bFromSweep,
 		const FHitResult& SweepResult
-	); 
+	);
 
 	void EnableAttackBox();
-	void DisableAttackBox(); */
+	void DisableAttackBox();
 
 public:
 	
