@@ -10,6 +10,7 @@
  * 
  */
 class APFGameState;
+class APFLevelPortal;
 
 UCLASS()
 class PROJECTF_API APFGameMode : public AGameModeBase
@@ -22,6 +23,7 @@ public:
 	
 	void OnMonsterKilled();
 	
+	void ProceedToNextLevel();
 	
 protected:
 	
@@ -48,4 +50,7 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Wave Data")
 	UDataTable* WaveDataTableAsset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Rules", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<APFLevelPortal> LevelPortalClass;
 };
