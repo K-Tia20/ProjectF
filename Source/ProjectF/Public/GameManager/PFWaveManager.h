@@ -21,7 +21,7 @@ struct FMonsterSpawnInfo
 	int32 SpawnCount = 0;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsBoss;
+	bool bIsBoss = false;
 };
 
 USTRUCT(BlueprintType)
