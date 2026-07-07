@@ -19,6 +19,10 @@ class PROJECTF_API APFGameState : public AGameStateBase
 public:
 	APFGameState();
 	
+	
+	void UpdateHUD();
+	void OnMonsterKilled();
+	
 	void SetCurrentLevel(int32 NewLevel) { CurrentLevel = NewLevel; }
 	UFUNCTION(BlueprintCallable, Category = "Game Progress")
 	int32 GetCurrentLevel() const { return CurrentLevel; }
