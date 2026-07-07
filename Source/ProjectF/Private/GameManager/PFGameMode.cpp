@@ -59,7 +59,7 @@ void APFGameMode::BeginPlay()
 	
 	if (PFGameState)
 	{
-		GetWorldTimerManager().SetTimer(PFTimerHandle, this, &APFGameMode::TimerCountDown, 0.1f, false);
+		GetWorldTimerManager().SetTimer(PFTimerHandle, this, &APFGameMode::TimerCountDown, 0.1f, true);
 		StartWave();
 	}
 }
@@ -74,6 +74,7 @@ void APFGameMode::TimerCountDown()
 	float NextTime = PFGameState->GetRemainingTime() - 0.1;
 	PFGameState->SetRemainingTime(NextTime);
 
+	PFGameState->UpdateHUD();
 
 	if (NextTime <= 0)
 	{
