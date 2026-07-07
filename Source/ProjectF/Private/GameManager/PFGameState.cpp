@@ -27,9 +27,16 @@ void APFGameState::UpdateHUD()
 
 	int32 Min = FMath::FloorToInt(RemainingTime / 60.0f);
 	int32 Sec = FMath::FloorToInt(FMath::Fmod(RemainingTime, 60.0f));
-	int32 Ms = FMath::FloorToInt((RemainingTime - FMath::FloorToFloat(RemainingTime)) * 100.0f);
 	
-	PlayerController->UpdateTimer(Min, Sec, Ms);
+	float SubSeconds = RemainingTime - FMath::FloorToFloat(RemainingTime);
+	int32 AbsoluteMs = FMath::FloorToInt(SubSeconds * 100.0f);
+	int32 FineMsTail = FMath::FloorToInt(SubSeconds * 1000.0f) % 10;
+	int32 FinalMs = (AbsoluteMs - (AbsoluteMs % 10)) + FineMsTail;
+	
+	if (FinalMs >= 100) FinalMs = 99;
+	if (FinalMs < 0) FinalMs = 0;
+	
+	PlayerController->UpdateTimer(Min, Sec, FinalMs);
 }
 
 

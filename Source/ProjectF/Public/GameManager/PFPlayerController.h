@@ -32,6 +32,8 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	class UUserWidget* MainMenuWidgetInstance;
+	
+	void UpdateTimerText(const FString& TimeString);
 
 	
 	
@@ -45,5 +47,5 @@ public:
 	void UpdatePlayerHP(float Health, float MaxHealth);
 	void UpdateWaveText(int32 CurrentWave);
 	void UpdateMonsterText(int32 RemainingMonsters);
-	void UpdateTimer(int32 Min, int32 Sec, int32 Ms);;
+	void UpdateTimer(int32 Min, int32 Sec, int32 Ms);
 };

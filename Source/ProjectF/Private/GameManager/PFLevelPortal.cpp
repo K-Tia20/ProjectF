@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameManager/PFGameMode.h"
 #include "Character/PFPlayerCharacter.h"
+#include "GameManager/PFGameInstance.h"
 
 
 APFLevelPortal::APFLevelPortal()
@@ -56,9 +57,15 @@ void APFLevelPortal::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
 
 void APFLevelPortal::Interact()
 {
+	if (APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn()))
+	{
+		if (UPFGameInstance* GameInstance = Cast<UPFGameInstance>(GetGameInstance()))
+		{
+			GameInstance->SavePlayerState(PlayerCharacter);
+		}
+	}
 	if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
 	{
-		// 게임모드에게 "나 상호작용 완료했으니 다음 레벨 열어줘!" 라고 명령합니다.
 		GameMode->ProceedToNextLevel();
 	}
 }
