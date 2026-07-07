@@ -7,7 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
 
-//최신2026-07-06
+
 APFBasicZombie::APFBasicZombie()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -16,8 +16,11 @@ APFBasicZombie::APFBasicZombie()
 void APFBasicZombie::BeginPlay()
 {
 	Super::BeginPlay();
-	
+			
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	
+	SpawnLocation = GetActorLocation();
+	LastKnownLocation = SpawnLocation;
 	
 	GetWorldTimerManager().SetTimer(DetectTimerHandle,this,&APFBasicZombie::DetectPlayer,0.5f,true);
 	
@@ -42,7 +45,7 @@ void APFBasicZombie::DetectPlayer()
 	float Distance = FVector::Dist(GetActorLocation(),Player->GetActorLocation());
 	
 	//시야 체크 코딩
-	if (bDrawDebug)
+	if (BDrawDebug)
 	{
 		DrawDebugSphere(
 		GetWorld(),
@@ -67,9 +70,32 @@ void APFBasicZombie::DetectPlayer()
 		0.5f
 		);
 	}
-	if (Distance > DetectRange || !IsPlayerInSight(Player))
+	
+	bool BCanSeePlayer =
+	Distance <= DetectRange &&
+	IsPlayerInSight(Player) &&
+	HasLineOfSight(Player);
+	
+	if (!BCanSeePlayer)
 	{
 		CurrentDetectTime = 0.f;
+		
+		if (BHasTarget)
+		{
+			TargetActor = nullptr;
+			BHasTarget = false;
+
+			MoveToLastKnownLocation();
+			
+			GetWorldTimerManager().SetTimer(
+			LastKnownLocationTimerHandle,
+			this,
+			&APFBasicZombie::CheckLastKnownLocation,
+			2.0f,
+			false
+			);
+		}
+
 		return;
 	}
 	
@@ -82,6 +108,11 @@ void APFBasicZombie::DetectPlayer()
 	}
 
 	TargetActor = Player;
+	
+	LastKnownLocation = Player->GetActorLocation();
+	
+	BHasTarget = true;
+	BMovingToLastKnownLocation = false;
 				
 	if (Distance <= AttackRange)
 	{
@@ -155,9 +186,102 @@ void APFBasicZombie::OnDamaged(AActor* DamageCauser)
 
 	TargetActor = DamageCauser;
 	CurrentDetectTime = RequiredDetectTime;
+	LastKnownLocation = DamageCauser->GetActorLocation();
+	
+	BHasTarget = true;
+	BMovingToLastKnownLocation = false;
 
 	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Detected attacker immediately"));
 
 	ChasePlayer();
 }
 
+void APFBasicZombie::MoveToLastKnownLocation()
+{
+	AAIController* AIController = Cast<AAIController>(GetController());
+
+	if (!AIController)
+	{
+		return;
+	}
+
+	BMovingToLastKnownLocation = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Move To Last Known Location"));
+
+	AIController->MoveToLocation(LastKnownLocation, MoveAcceptanceRadius);
+}
+
+void APFBasicZombie::CheckLastKnownLocation()
+{
+	if (TargetActor)
+	{
+		return;
+	}
+
+	if (BReturnToSpawnLocation)
+	{
+		ReturnToSpawnLocation();
+	}
+}
+
+void APFBasicZombie::ReturnToSpawnLocation()
+{
+	AAIController* AIController = Cast<AAIController>(GetController());
+
+	if (!AIController)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Return To Spawn"));
+
+	AIController->MoveToLocation(
+		SpawnLocation,
+		MoveAcceptanceRadius
+	);
+
+	BMovingToLastKnownLocation = false;
+}
+//시야 벽막힘 구현 및 디버그
+bool APFBasicZombie::HasLineOfSight(AActor* Player)
+{
+	if (!Player)
+	{
+		return false;
+	}
+
+	FVector Start = GetActorLocation() + FVector(0.f, 0.f, 60.f);
+	FVector End = Player->GetActorLocation() + FVector(0.f, 0.f, 60.f);
+
+	FHitResult HitResult;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	bool BHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	bool BCanSeePlayer = BHit && HitResult.GetActor() == Player;
+
+	if (BDrawDebug)
+	{
+		DrawDebugLine(
+			GetWorld(),
+			Start,
+			End,
+			BCanSeePlayer ? FColor::Green : FColor::Red,
+			false,
+			0.5f,
+			0,
+			2.f
+		);
+	}
+
+	return BCanSeePlayer;
+}
