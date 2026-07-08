@@ -7,19 +7,13 @@
 #include "PFAmmoItem.generated.h"
 
 UCLASS()
-class PROJECTF_API APFAmmoItem : public APFBaseItem
+class PORTFOLIO_API APFAmmoItem : public APFBaseItem
 {
 	GENERATED_BODY()
-
-public:
-	// Sets default values for this actor's properties
-	APFAmmoItem();
-
+    
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
+	// int32 AmmoAmount = 30;
 };

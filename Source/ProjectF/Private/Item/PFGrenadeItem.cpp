@@ -2,25 +2,14 @@
 
 
 #include "Item/PFGrenadeItem.h"
+#include "Character/PFPlayerCharacter.h" 
 
 
-// Sets default values
-APFGrenadeItem::APFGrenadeItem()
+void APFGrenadeItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-}
+	// PlayerCharacter->AddGrenade(GrenadeAmount);
 
-// Called when the game starts or when spawned
-void APFGrenadeItem::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
-
-// Called every frame
-void APFGrenadeItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
+	// UE_LOG(LogTemp, Log, TEXT("수류탄 %d 개 획득!"), GrenadeAmount);
+	// Super::OnPickup(PlayerCharacter);
 }
 
