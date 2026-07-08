@@ -285,3 +285,15 @@ bool APFBasicZombie::HasLineOfSight(AActor* Player)
 
 	return BCanSeePlayer;
 }
+//Dead
+void APFBasicZombie::Die()
+{
+	GetWorldTimerManager().ClearTimer(DetectTimerHandle);
+	GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
+
+	TargetActor = nullptr;
+	BHasTarget = false;
+	BMovingToLastKnownLocation = false;
+
+	Super::Die();
+}
