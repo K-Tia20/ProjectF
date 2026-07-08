@@ -13,45 +13,73 @@ class PROJECTF_API APFMonsterCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	//최신2026-07-06
 	APFMonsterCharacter();
 
-protected:
-	// ======= Status ======
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
-	float MaxHP = 100.f;
-	
-	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category="Monster")
-	float CurrentHP;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
-	float AttackDamage = 20.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
-	float AttackRange = 150.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
-	float AttackCooldown = 1.5f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster")
-	bool IsDead = false;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Monster")
-	bool CanAttack = true;
-	
-	FTimerHandle AttackTimerHandle;
-	
-	void ResetAttack();
-	
-	virtual void BeginPlay() override;
-	
-	// ======= Attack ======
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Monster|Attack")
-	UBoxComponent* AttackBox;
+	virtual void Tick(float DeltaTime) override;
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// ===== Damage / Attack / Death =====
+	UFUNCTION(BlueprintCallable, Category = "Monster")
+	virtual void TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser = nullptr);
+
+	UFUNCTION(BlueprintCallable, Category = "Monster")
+	virtual void Attack();
+
+	UFUNCTION(BlueprintCallable, Category = "Monster")
+	virtual void Die();
+
+	UFUNCTION(BlueprintCallable, Category = "Monster")
+	bool IsMonsterDead() const;
+
+protected:
+	virtual void BeginPlay() override;
+
+	// 데미지를 받은 뒤 자식 몬스터가 추가 반응을 할 수 있게 만든 함수
+	// 예: 좀비는 피격 시 공격자를 즉시 추적
+	virtual void OnDamaged(AActor* DamageCauser);
+
+
+	// =====================================================
+	// Status
+	// =====================================================
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	float MaxHP = 100.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
+	float CurrentHP = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	float AttackDamage = 20.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	float AttackRange = 150.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	float AttackCooldown = 1.5f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
+	bool IsDead = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
+	bool CanAttack = true;
+
+
+	// =====================================================
+	// Attack
+	// =====================================================
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Attack")
+	UBoxComponent* AttackBox = nullptr;
+
+	FTimerHandle AttackTimerHandle;
 	FTimerHandle AttackBoxTimerHandle;
-	
+
+	void ResetAttack();
+
+	void EnableAttackBox();
+	void DisableAttackBox();
+
 	UFUNCTION()
 	void OnAttackBoxOverlap(
 		UPrimitiveComponent* OverlappedComponent,
@@ -62,34 +90,15 @@ protected:
 		const FHitResult& SweepResult
 	);
 
-	void EnableAttackBox();
-	void DisableAttackBox();
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster|Death")
+
+	// =====================================================
+	// Death
+	// =====================================================
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Death")
 	float DestroyDelay = 2.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster|Death")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Death")
 	bool BDestroyOnDeath = true;
-
-	UFUNCTION(BlueprintCallable)
-	bool IsMonsterDead() const;
-
-public:
-	
-	virtual void Tick(float DeltaTime) override;
-
-	
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
-	UFUNCTION(BlueprintCallable)
-	void TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser = nullptr);
-	
-	UFUNCTION(BlueprintCallable)
-	void Attack();
-	
-	UFUNCTION(BlueprintCallable)
-	virtual void Die();
-	
-	virtual void OnDamaged(AActor* DamageCauser);
 	
 };
