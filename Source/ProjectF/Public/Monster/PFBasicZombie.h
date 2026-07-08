@@ -83,6 +83,7 @@ protected:
 	
 public:
 	
+	virtual void Die() override;
 
 	
 };

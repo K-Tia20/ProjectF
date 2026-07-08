@@ -64,6 +64,15 @@ protected:
 
 	void EnableAttackBox();
 	void DisableAttackBox();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster|Death")
+	float DestroyDelay = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Monster|Death")
+	bool BDestroyOnDeath = true;
+
+	UFUNCTION(BlueprintCallable)
+	bool IsMonsterDead() const;
 
 public:
 	
@@ -79,7 +88,7 @@ public:
 	void Attack();
 	
 	UFUNCTION(BlueprintCallable)
-	void Die();
+	virtual void Die();
 	
 	virtual void OnDamaged(AActor* DamageCauser);
 	

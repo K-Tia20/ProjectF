@@ -2,8 +2,10 @@
 
 #include "Monster/PFMonsterCharacter.h"
 #include  "Components/BoxComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
-//최신2026-07-06
+//최신2026-07-08
 APFMonsterCharacter::APFMonsterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -100,6 +102,33 @@ void APFMonsterCharacter::Die()
 	CurrentHP = 0.f;
 	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die"));
+	
+	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
+
+	DisableAttackBox();
+	
+	if (AController* MyController = GetController())
+	{
+		MyController->StopMovement();
+	}
+
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->DisableMovement();
+	}
+
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if (BDestroyOnDeath)
+	{
+		SetLifeSpan(DestroyDelay);
+	}
+
 }
 
 void APFMonsterCharacter::ResetAttack()
@@ -107,6 +136,12 @@ void APFMonsterCharacter::ResetAttack()
 	CanAttack = true;
 
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Ready"));
+	
+}
+
+bool APFMonsterCharacter::IsMonsterDead() const
+{
+	return IsDead;
 }
 
 void APFMonsterCharacter::EnableAttackBox()
