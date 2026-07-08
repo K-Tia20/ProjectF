@@ -7,7 +7,7 @@
 #include "PFHealingItem.generated.h"
 
 UCLASS()
-class PORTFOLIO_API APFHealingItem : public APFBaseItem
+class PROJECTF_API APFHealingItem : public APFBaseItem
 {
 	GENERATED_BODY()
     

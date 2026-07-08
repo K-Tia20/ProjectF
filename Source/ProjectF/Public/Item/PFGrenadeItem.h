@@ -7,7 +7,7 @@
 #include "PFGrenadeItem.generated.h"
 
 UCLASS()
-class PORTFOLIO_API APFGrenadeItem : public APFBaseItem
+class PROJECTF_API APFGrenadeItem : public APFBaseItem
 {
 	GENERATED_BODY()
     

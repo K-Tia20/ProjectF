@@ -7,7 +7,7 @@
 #include "PFAmmoItem.generated.h"
 
 UCLASS()
-class PORTFOLIO_API APFAmmoItem : public APFBaseItem
+class PROJECTF_API APFAmmoItem : public APFBaseItem
 {
 	GENERATED_BODY()
     
