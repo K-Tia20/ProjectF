@@ -4,6 +4,7 @@
 #include  "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include  "GameManager/PFGameMode.h"
 
 //최신2026-07-08
 APFMonsterCharacter::APFMonsterCharacter()
@@ -102,6 +103,11 @@ void APFMonsterCharacter::Die()
 	CurrentHP = 0.f;
 	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die"));
+	
+	if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GameMode->OnMonsterKilled();
+	}
 	
 	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
 	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
