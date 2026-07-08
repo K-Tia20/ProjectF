@@ -48,14 +48,6 @@ void APFGameState::OnMonsterKilled()
 	{
 		PlayerController->UpdateMonsterText(RemainingMonsters);
 	}
-
-	if (RemainingMonsters <= 0)
-	{
-		if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
-		{
-			GameMode->OnMonsterKilled(); 
-		}
-	}
 }
 
 
