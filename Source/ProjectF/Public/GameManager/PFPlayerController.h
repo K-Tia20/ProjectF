@@ -33,9 +33,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	class UUserWidget* MainMenuWidgetInstance;
 	
-	void UpdateTimerText(const FString& TimeString);
-
-	
 	
 	
 	UUserWidget* GetHUDWidget() const { return HUDWidgetInstance; }

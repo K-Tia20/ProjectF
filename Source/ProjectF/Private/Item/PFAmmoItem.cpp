@@ -2,25 +2,13 @@
 
 
 #include "Item/PFAmmoItem.h"
+#include "Character/PFPlayerCharacter.h" 
 
 
-// Sets default values
-APFAmmoItem::APFAmmoItem()
+void APFAmmoItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-}
-
-// Called when the game starts or when spawned
-void APFAmmoItem::BeginPlay()
-{
-	Super::BeginPlay();
+	//PlayerCharacter->GetCombatComponent()->AddAmmo(AmmoAmount);
 	
+	// UE_LOG(LogTemp, Log, TEXT("탄약 %d 발 획득!"), AmmoAmount);
+	// Super::OnPickup(PlayerCharacter);
 }
-
-// Called every frame
-void APFAmmoItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-

@@ -2,25 +2,47 @@
 
 
 #include "Item/PFBaseItem.h"
+#include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Character/PFPlayerCharacter.h"
 
 
-// Sets default values
 APFBaseItem::APFBaseItem()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+
+	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
+	SetRootComponent(CollisionSphere);
+	CollisionSphere->SetSphereRadius(50.f);
+    
+	CollisionSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
+	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
+	ItemMesh->SetupAttachment(RootComponent);
+	ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-// Called when the game starts or when spawned
 void APFBaseItem::BeginPlay()
 {
 	Super::BeginPlay();
-	
+    
+	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &APFBaseItem::OnSphereOverlap);
 }
 
-// Called every frame
-void APFBaseItem::Tick(float DeltaTime)
+void APFBaseItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	Super::Tick(DeltaTime);
+	if (OtherActor)
+	{
+		APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor);
+		if (PlayerCharacter)
+		{
+			OnPickup(PlayerCharacter);
+		}
+	}
+}
+
+void APFBaseItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
+{
+	Destroy();
 }
 
