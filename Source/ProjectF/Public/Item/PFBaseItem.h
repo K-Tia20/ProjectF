@@ -10,7 +10,7 @@ class USphereComponent;
 class UStaticMeshComponent;
 
 UCLASS()
-class PORTFOLIO_API APFBaseItem : public AActor
+class PROJECTF_API APFBaseItem : public AActor
 {
 	GENERATED_BODY()
     
