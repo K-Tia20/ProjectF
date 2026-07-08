@@ -20,8 +20,7 @@ APFGameMode::APFGameMode()
 void APFGameMode::OnMonsterKilled()
 {
 	if (!PFGameState) return;
-	PFGameState->DecreaseMonsterCount();
-    
+	PFGameState->OnMonsterKilled();
 	UE_LOG(LogTemp, Log, TEXT("몬스터 처치! 남은 몬스터: %d"), PFGameState->GetRemainingMonsters());
 
 	if (PFGameState->GetRemainingMonsters() <= 0)
