@@ -25,14 +25,13 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class UStaticMeshComponent* PortalMesh;
 
-/*
+
 	UFUNCTION()
-	void OnOverlapBegin(UCLASS(meta=(AllowedClasses="PrimitiveComponent")) UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 
 	UFUNCTION()
-	void OnOverlapEnd(UCLASS(meta=(AllowedClasses="PrimitiveComponent")) UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-*/
+	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 		
-	void Interact();
+	void Interact(class APFPlayerCharacter* PlayerCharacter);
 };

@@ -42,6 +42,7 @@ public:
 	
 
 	
+	
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Game Progress")
 	int32 CurrentLevel;

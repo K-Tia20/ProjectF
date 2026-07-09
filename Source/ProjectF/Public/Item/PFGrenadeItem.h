@@ -10,16 +10,11 @@ UCLASS()
 class PROJECTF_API APFGrenadeItem : public APFBaseItem
 {
 	GENERATED_BODY()
-
-public:
-	// Sets default values for this actor's properties
-	APFGrenadeItem();
-
+    
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	// 보급해 줄 수류탄 개수
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
+	// int32 GrenadeAmount = 1;
 };

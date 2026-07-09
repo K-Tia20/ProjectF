@@ -15,7 +15,7 @@ public:
 	
 	APFPortalActor();
 	
-	void SpawnMonster(TSubclassOf<APawn> MonsterClass);
+	void SpawnMonster(TSubclassOf<APawn> MonsterClass,bool bIsBoss);
 	
 	
 	

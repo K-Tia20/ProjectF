@@ -3,10 +3,14 @@
 
 #include "GameManager/PFGameMode.h"
 #include "GameManager/PFGameState.h"
+#include "GameManager/PFPlayerController.h"
 #include "GameManager/PFWaveManager.h"
 #include "GameManager/PFSpawnManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameManager/PFLevelPortal.h"
+#include "Blueprint/UserWidget.h"
+#include "Misc/OutputDeviceNull.h"
+
 
 APFGameMode::APFGameMode()
 {
@@ -20,8 +24,7 @@ APFGameMode::APFGameMode()
 void APFGameMode::OnMonsterKilled()
 {
 	if (!PFGameState) return;
-	PFGameState->DecreaseMonsterCount();
-    
+	PFGameState->OnMonsterKilled();
 	UE_LOG(LogTemp, Log, TEXT("몬스터 처치! 남은 몬스터: %d"), PFGameState->GetRemainingMonsters());
 
 	if (PFGameState->GetRemainingMonsters() <= 0)
@@ -47,14 +50,6 @@ void APFGameMode::BeginPlay()
 		{
 			PFWaveManager->SetWaveDataTable(WaveDataTableAsset); 
 		}
-	}
-	
-	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), APFWaveManager::StaticClass());
-	PFWaveManager = Cast<APFWaveManager>(FoundActor);
-
-	if (PFWaveManager == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("GameMode에 PFWaveManager가 할당되어 있지 않음"));
 	}
 	
 	if (PFGameState)
@@ -159,15 +154,28 @@ void APFGameMode::ProceedToNextLevel()
 {
 	if (!PFGameState) return;
 
-	int32 NextLevel = PFGameState->GetCurrentLevel() + 1;
+	int32 NextLevelNum = PFGameState->GetCurrentLevel() + 1;
 
-	if (NextLevel <= 4)
+	if (NextLevelNum <= 4)
 	{
-		PFGameState->SetCurrentLevel(NextLevel);
+		PFGameState->SetCurrentLevel(NextLevelNum);
 		PFGameState->SetCurrentWave(1); 
         
-		UE_LOG(LogTemp, Warning, TEXT("Level %d 클리어! 다음 레벨로 넘어갑니다."), NextLevel - 1);
-		StartWave(); 
+		UE_LOG(LogTemp, Warning, TEXT("Level %d 클리어! 다음 레벨로 넘어갑니다."), NextLevelNum - 1);
+		if (LoadingWidgetClass)
+		{
+			UUserWidget* LoadingScreen = CreateWidget<UUserWidget>(GetWorld(), LoadingWidgetClass);
+			if (LoadingScreen)
+			{
+				LoadingScreen->AddToViewport(9999);
+				FOutputDeviceNull Ar;
+				LoadingScreen->CallFunctionByNameWithArguments(TEXT("PlayFadeOut"), Ar, nullptr, true);
+			}
+		}
+		FString LevelNameString = FString::Printf(TEXT("L_Stage%d"), NextLevelNum);
+		FName NextLevelName = FName(*LevelNameString);
+		
+		UGameplayStatics::OpenLevel(GetWorld(), NextLevelName);
 	}
 	else
 	{
@@ -183,4 +191,11 @@ void APFGameMode::GameOver()
 {
 	GetWorldTimerManager().ClearTimer(PFTimerHandle);
 	UE_LOG(LogTemp, Warning, TEXT("Game Over!"));
+
+	if (APFPlayerController* PC = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		PC->ShowGameOver(false);
+	}
 }
+
+// dev 최신화
