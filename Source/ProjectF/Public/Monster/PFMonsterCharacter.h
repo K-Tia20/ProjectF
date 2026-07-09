@@ -67,12 +67,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
 	bool CanAttack = true;
 	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	bool bIsBoss = false;//UI호출용
 	
-
 	// =====================================================
 	// Attack
 	// =====================================================
 
+protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Attack")
 	UBoxComponent* AttackBox = nullptr;
 
@@ -110,5 +113,21 @@ protected:
 	// =====================================================
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Monster|Event")
-	void OnMonsterDamaged(float DamageAmount, AActor* DamageCauser);//UI
+	void OnMonsterDamaged(float DamageAmount, AActor* DamageCauser);//UI호출용
+	
+	// =====================================================
+	// Sound
+	// =====================================================
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
+	USoundBase* HitSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
+	USoundBase* DeathSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
+	USoundBase* AttackSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
+	USoundBase* AttackHitSound = nullptr;
 };
