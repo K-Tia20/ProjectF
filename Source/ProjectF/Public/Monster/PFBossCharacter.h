@@ -146,6 +146,32 @@ protected:
 	// Future Patterns
 	// =====================================================
 
+	
+	
+	// =====================================================
+	// Boss Sound
+	// =====================================================
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* ArmorHitSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* ArmorBreakSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* Phase2Sound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* SummonSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* ChargeStartSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* ChargeImpactSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
+	USoundBase* RangedAttackSound = nullptr;
 protected:
 	// 나중에 구현 예정
 	void StartChargePattern();

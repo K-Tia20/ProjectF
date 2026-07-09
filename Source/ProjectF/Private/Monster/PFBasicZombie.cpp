@@ -117,6 +117,8 @@ void APFBasicZombie::DetectPlayer()
 	{
 		return;
 	}
+	
+	const bool BWasHasTarget = BHasTarget;
 
 	// 플레이어 추적 시작
 	TargetActor = Player;
@@ -124,6 +126,11 @@ void APFBasicZombie::DetectPlayer()
 
 	BHasTarget = true;
 	BMovingToLastKnownLocation = false;
+	
+	if (!BWasHasTarget)
+	{
+		PlayDetectSound();
+	}
 
 	// 다시 플레이어를 찾았으므로 마지막 위치 체크 타이머 제거
 	GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
@@ -230,6 +237,8 @@ void APFBasicZombie::HandleLostTarget()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Lost Target"));
 
+	PlaySearchSound();
+	
 	MoveToLastKnownLocation();
 
 	// 기존 타이머가 남아있을 수 있으므로 제거 후 다시 등록
@@ -310,6 +319,52 @@ void APFBasicZombie::ReturnToSpawnLocation()
 	BMovingToLastKnownLocation = false;
 }
 
+
+// =====================================================
+// Sound
+// =====================================================
+
+void APFBasicZombie::PlayRoarSound()
+{
+	if (!RoarSound)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		RoarSound,
+		GetActorLocation()
+	);
+}
+
+void APFBasicZombie::PlayDetectSound()
+{
+	if (!DetectSound)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		DetectSound,
+		GetActorLocation()
+	);
+}
+
+void APFBasicZombie::PlaySearchSound()
+{
+	if (!SearchSound)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		SearchSound,
+		GetActorLocation()
+	);
+}
 
 // =====================================================
 // Damage

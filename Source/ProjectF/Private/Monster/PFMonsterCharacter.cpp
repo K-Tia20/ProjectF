@@ -5,8 +5,9 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include  "GameManager/PFGameMode.h"
+#include "Kismet/GameplayStatics.h"
 
-//최신2026-07-08
+//최신2026-07-09
 APFMonsterCharacter::APFMonsterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -52,6 +53,15 @@ void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount, AActor* Dama
 	{
 		return;
 	}
+	//사운드
+	if (HitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			HitSound,
+			GetActorLocation()
+		);
+	}
 	
 	CurrentHP -= DamageAmount;
 	
@@ -83,6 +93,15 @@ void APFMonsterCharacter::Attack()
 	CanAttack= false;
 	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] Attack"));
+	//사운드
+	if (AttackSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			AttackSound,
+			GetActorLocation()
+		);
+	}
 	
 	EnableAttackBox();
 	
@@ -106,6 +125,15 @@ void APFMonsterCharacter::Die()
 	CurrentHP = 0.f;
 	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die"));
+	//사운드
+	if (DeathSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			DeathSound,
+			GetActorLocation()
+		);
+	}
 	
 	if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
 	{
@@ -188,6 +216,15 @@ void APFMonsterCharacter::OnAttackBoxOverlap(
 		return;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Hit: %s"), *OtherActor->GetName());
+	//사운드
+	if (AttackHitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			AttackHitSound,
+			OtherActor->GetActorLocation()
+		);
+	}
 }
 
 void APFMonsterCharacter::OnDamaged(AActor* DamageCauser)
