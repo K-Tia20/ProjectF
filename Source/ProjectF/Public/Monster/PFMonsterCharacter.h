@@ -68,9 +68,7 @@ protected:
 	bool CanAttack = true;
 	
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
-	bool bIsBoss = false;//UI호출용
-	
+
 	// =====================================================
 	// Attack
 	// =====================================================
