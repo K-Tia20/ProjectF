@@ -2,6 +2,7 @@
 
 
 #include "GameManager/PFPortalActor.h"
+#include "Monster/PFMonsterCharacter.h"
 
 
 
@@ -18,7 +19,7 @@ APFPortalActor::APFPortalActor()
 
 
 
-void APFPortalActor :: SpawnMonster(TSubclassOf<APawn> MonsterClass)
+void APFPortalActor :: SpawnMonster(TSubclassOf<APawn> MonsterClass, bool bIsBoss)
 {
 	if (MonsterClass == nullptr) return;
 
@@ -28,5 +29,10 @@ void APFPortalActor :: SpawnMonster(TSubclassOf<APawn> MonsterClass)
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
+	APawn* SpawnedPawn = GetWorld()->SpawnActor<APawn>(MonsterClass, SpawnLocation, SpawnRotation, SpawnParams);
+	if (APFMonsterCharacter* SpawnedMonster = Cast<APFMonsterCharacter>(SpawnedPawn))
+	{
+		SpawnedMonster->bIsBoss = bIsBoss;
+	}
 	GetWorld()->SpawnActor<APawn>(MonsterClass, SpawnLocation, SpawnRotation, SpawnParams);
 }
