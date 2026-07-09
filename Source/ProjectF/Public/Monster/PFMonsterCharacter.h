@@ -63,7 +63,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
 	bool CanAttack = true;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	bool bIsBoss = false;//UI
 
 	// =====================================================
 	// Attack
@@ -101,4 +103,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Death")
 	bool BDestroyOnDeath = true;
 	
+	// =====================================================
+	// Evevt
+	// =====================================================
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Monster|Event")
+	void OnMonsterDamaged(float DamageAmount, AActor* DamageCauser);//UI
 };
