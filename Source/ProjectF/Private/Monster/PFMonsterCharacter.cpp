@@ -57,6 +57,9 @@ void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount, AActor* Dama
 	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] Hit! Damage: %f / HP: %f"),DamageAmount,CurrentHP);
 	
+	// UI 갱신용 블루프린트 이벤트 호출
+	OnMonsterDamaged(DamageAmount, DamageCauser);
+	
 	OnDamaged(DamageCauser);
 	
 	if (CurrentHP <= 0.f)
