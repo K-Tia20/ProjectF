@@ -75,6 +75,7 @@ void APFPlayerCharacter::Heal(float HealAmount)
 
 void APFPlayerCharacter::Fire(const FInputActionValue& Value)
 {
+    UE_LOG(LogTemp, Warning, TEXT("Fire 함수가 호출되었습니다!"));
     
     if (FireMontage)
     {
