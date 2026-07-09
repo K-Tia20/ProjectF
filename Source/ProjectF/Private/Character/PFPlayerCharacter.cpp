@@ -4,6 +4,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Character/PFCombatComponent.h"
+
+
 
 APFPlayerCharacter::APFPlayerCharacter()
 {
@@ -27,6 +30,9 @@ APFPlayerCharacter::APFPlayerCharacter()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false; 
+
+    // [추가] (컴뱃 컴포넌트 관련) 캐릭터에 컴뱃 컴포넌트 부착
+    CombatComponent = CreateDefaultSubobject<UPFCombatComponent>(TEXT("CombatComponent"));
 }
 
 // [추가] 피격 로직: 대미지 값을 받아 현재 체력에서 차감
@@ -69,6 +75,9 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
         EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::Move);
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::Look);
+        
+        // [추가] (컴뱃 컴포넌트 관련) 좌클릭(FireAction) 입력 시 Fire 함수 실행
+        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
     }
 }
 
@@ -103,5 +112,15 @@ void APFPlayerCharacter::Look(const FInputActionValue& Value)
     {
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
+    }
+}
+
+// [추가] (컴뱃 컴포넌트 관련) 사격 실행 함수
+void APFPlayerCharacter::Fire(const FInputActionValue& Value)
+{
+    // CombatComponent가 유효한지 확인 후 내부의 FireWeapon 함수 호출
+    if (CombatComponent)
+    {
+        CombatComponent->FireWeapon();
     }
 }

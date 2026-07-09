@@ -2,25 +2,16 @@
 
 
 #include "Item/PFHealingItem.h"
+#include "Character/PFPlayerCharacter.h" 
 
 
-// Sets default values
-APFHealingItem::APFHealingItem()
+void APFHealingItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-}
-
-// Called when the game starts or when spawned
-void APFHealingItem::BeginPlay()
-{
-	Super::BeginPlay();
+	// if (PlayerCharacter)
+	// {
+	// 	PlayerCharacter->Heal(HealAmount);
+	// }
 	
+	// UE_LOG(LogTemp, Log, TEXT("체력 %f 회복 완료!"), HealAmount);
+	// Super::OnPickup(PlayerCharacter);
 }
-
-// Called every frame
-void APFHealingItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-

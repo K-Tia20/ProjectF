@@ -10,16 +10,10 @@ UCLASS()
 class PROJECTF_API APFHealingItem : public APFBaseItem
 {
 	GENERATED_BODY()
-
-public:
-	// Sets default values for this actor's properties
-	APFHealingItem();
-
+    
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
+	// float HealAmount = 20.f;
 };
