@@ -3,10 +3,14 @@
 
 #include "GameManager/PFGameMode.h"
 #include "GameManager/PFGameState.h"
+#include "GameManager/PFPlayerController.h"
 #include "GameManager/PFWaveManager.h"
 #include "GameManager/PFSpawnManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameManager/PFLevelPortal.h"
+#include "Blueprint/UserWidget.h"
+#include "Misc/OutputDeviceNull.h"
+
 
 APFGameMode::APFGameMode()
 {
@@ -158,7 +162,16 @@ void APFGameMode::ProceedToNextLevel()
 		PFGameState->SetCurrentWave(1); 
         
 		UE_LOG(LogTemp, Warning, TEXT("Level %d 클리어! 다음 레벨로 넘어갑니다."), NextLevelNum - 1);
-		
+		if (LoadingWidgetClass)
+		{
+			UUserWidget* LoadingScreen = CreateWidget<UUserWidget>(GetWorld(), LoadingWidgetClass);
+			if (LoadingScreen)
+			{
+				LoadingScreen->AddToViewport(9999);
+				FOutputDeviceNull Ar;
+				LoadingScreen->CallFunctionByNameWithArguments(TEXT("PlayFadeOut"), Ar, nullptr, true);
+			}
+		}
 		FString LevelNameString = FString::Printf(TEXT("L_Stage%d"), NextLevelNum);
 		FName NextLevelName = FName(*LevelNameString);
 		
@@ -178,4 +191,9 @@ void APFGameMode::GameOver()
 {
 	GetWorldTimerManager().ClearTimer(PFTimerHandle);
 	UE_LOG(LogTemp, Warning, TEXT("Game Over!"));
+
+	if (APFPlayerController* PC = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		PC->ShowGameOver(false);
+	}
 }
