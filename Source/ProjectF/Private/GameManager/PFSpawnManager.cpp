@@ -80,7 +80,7 @@ void APFSpawnManager::SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnLi
 			int32 RandomIndex = FMath::RandRange(0, TargetPortals.Num() - 1);
 			if (TargetPortals[RandomIndex])
 			{
-				TargetPortals[RandomIndex]->SpawnMonster(MonsterInfo.MonsterClass);
+				TargetPortals[RandomIndex]->SpawnMonster(MonsterInfo.MonsterClass,MonsterInfo.bIsBoss);
 			}
 		}
 	}

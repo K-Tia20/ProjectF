@@ -31,6 +31,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	bool IsMonsterDead() const;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
+	bool bIsBoss = false;//UI
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -64,8 +67,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
 	bool CanAttack = true;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
-	bool bIsBoss = false;//UI
+	
 
 	// =====================================================
 	// Attack
