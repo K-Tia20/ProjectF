@@ -52,16 +52,15 @@ void APFSpawnManager::SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnLi
 	{
 		APFPortalActor* Portal = Cast<APFPortalActor>(Actor);
 		if (Portal)
-		{
-			if (Portal->GetClass()->GetName().Contains(TEXT("Boss")))
+			if (Portal->ActorHasTag(TEXT("Boss")))
 			{
 				BossPortalActors.Add(Portal);
+				UE_LOG(LogTemp, Log, TEXT("SpawnManager: 보스 포탈 발견! -> %s"), *Portal->GetName());
 			}
 			else
 			{
 				PFPortalActors.Add(Portal);
 			}
-		}
 	}
 
 	for (const FMonsterSpawnInfo& MonsterInfo : SpawnList)
@@ -80,7 +79,7 @@ void APFSpawnManager::SpawnWaveMonsters(const TArray<FMonsterSpawnInfo>& SpawnLi
 			int32 RandomIndex = FMath::RandRange(0, TargetPortals.Num() - 1);
 			if (TargetPortals[RandomIndex])
 			{
-				TargetPortals[RandomIndex]->SpawnMonster(MonsterInfo.MonsterClass);
+				TargetPortals[RandomIndex]->SpawnMonster(MonsterInfo.MonsterClass,MonsterInfo.bIsBoss);
 			}
 		}
 	}

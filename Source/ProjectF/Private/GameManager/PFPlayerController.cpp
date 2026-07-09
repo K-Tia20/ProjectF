@@ -145,3 +145,54 @@ void APFPlayerController::UpdateTimer(int32 Min, int32 Sec, int32 Ms)
 	FString Command = FString::Printf(TEXT("UpdateTimer %d %d %d"), Min, Sec, Ms);
 	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
 }
+
+
+
+
+void APFPlayerController::ShowGameOver(bool bIsClear)
+{
+	if (HUDWidgetInstance) { HUDWidgetInstance->RemoveFromParent(); HUDWidgetInstance = nullptr; }
+	if (GameOverWidgetClass)
+	{
+		GameOverWidgetInstance = CreateWidget<UUserWidget>(this, GameOverWidgetClass);
+		if (GameOverWidgetInstance) { GameOverWidgetInstance->AddToViewport(); bShowMouseCursor = true; SetInputMode(FInputModeUIOnly()); }
+	}
+}
+
+
+
+
+void APFPlayerController::ShowBloodEffect(float DamageAmount)
+{
+	if (HUDWidgetInstance)
+	{
+		FOutputDeviceNull Ar;
+		FString Command = FString::Printf(TEXT("PlayBloodAnim %f"), DamageAmount);
+		HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+	}
+}
+
+
+
+
+void APFPlayerController::ShowInteractionPrompt(const FString& ActionText)
+{
+	if (HUDWidgetInstance)
+	{
+		FOutputDeviceNull Ar;
+		FString Command = FString::Printf(TEXT("ShowPrompt %s"), *ActionText);
+		HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+	}
+}
+
+
+
+
+void APFPlayerController::HideInteractionPrompt()
+{
+	if (HUDWidgetInstance)
+	{
+		FOutputDeviceNull Ar;
+		HUDWidgetInstance->CallFunctionByNameWithArguments(TEXT("HidePrompt"), Ar, nullptr, true);
+	}
+}

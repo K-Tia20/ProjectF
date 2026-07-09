@@ -25,45 +25,55 @@ APFLevelPortal::APFLevelPortal()
 void APFLevelPortal::BeginPlay()
 {
 	Super::BeginPlay();
-	/*
+	
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &APFLevelPortal::OnOverlapBegin);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &APFLevelPortal::OnOverlapEnd);
-	*/
+	
 }
 
-/*
+
 void APFLevelPortal::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor))
+	if (OtherActor)
 	{
-		PlayerCharacter->SetTargetPortal(this);
-
-	}
-}
-*/
-
-/*
- void APFLevelPortal::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor))
-	{
-		if (PlayerCharacter->GetTargetPortal() == this)
+		APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor);
+		if (PlayerCharacter)
 		{
-			PlayerCharacter->SetTargetPortal(nullptr);
+			PlayerCharacter->SetTargetPortal(this);
+			UE_LOG(LogTemp, Log, TEXT("포탈 반경 진입! F키를 누르세요."));
 		}
 	}
 }
-*/
 
-void APFLevelPortal::Interact()
+
+
+void APFLevelPortal::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn()))
+	if (OtherActor)
+	{
+		APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor);
+		if (PlayerCharacter)
+		{
+			if (PlayerCharacter->GetTargetPortal() == this)
+			{
+				PlayerCharacter->SetTargetPortal(nullptr);
+				UE_LOG(LogTemp, Log, TEXT("포탈 반경을 벗어남."));
+			}
+		}
+	}
+}
+
+
+void APFLevelPortal::Interact(class APFPlayerCharacter* PlayerCharacter)
+{
+	if (PlayerCharacter)
 	{
 		if (UPFGameInstance* GameInstance = Cast<UPFGameInstance>(GetGameInstance()))
 		{
 			GameInstance->SavePlayerState(PlayerCharacter);
 		}
 	}
+    
 	if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GameMode->ProceedToNextLevel();
