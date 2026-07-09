@@ -89,6 +89,23 @@ protected:
 	virtual void ReturnToSpawnLocation();
 	
 	
+	
+	// ===== Sound =====
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Sound")
+	USoundBase* RoarSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Sound")
+	USoundBase* DetectSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|Sound")
+	USoundBase* SearchSound = nullptr;
+
+	virtual void PlayRoarSound();
+	virtual void PlayDetectSound();
+	virtual void PlaySearchSound();
+	
+	
 	// ===== Debug =====
 	UPROPERTY(EditAnywhere, Category = "Debug")
 	bool BDrawDebug = true;

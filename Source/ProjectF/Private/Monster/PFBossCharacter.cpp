@@ -6,10 +6,13 @@
 #include "Monster/PFMonsterAIController.h"
 #include "NavigationSystem.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 
 APFBossCharacter::APFBossCharacter()
 {
+	bIsBoss = true;
+	
 	// 보스는 스폰 위치로 돌아가지 않는다.
 	BReturnToSpawnLocation = false;
 
@@ -127,6 +130,8 @@ void APFBossCharacter::TakeArmorDamage(float ArmorDamageAmount)
 	{
 		return;
 	}
+	
+	const bool BWasArmorBroken = IsArmorBroken();
 
 	CurrentArmor = FMath::Clamp(CurrentArmor - ArmorDamageAmount, 0.f, MaxArmor);
 
@@ -138,9 +143,18 @@ void APFBossCharacter::TakeArmorDamage(float ArmorDamageAmount)
 		CurrentArmor
 	);
 
-	if (IsArmorBroken())
+	if (!BWasArmorBroken && IsArmorBroken())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Boss] Armor Broken"));
+		
+		if (ArmorBreakSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				ArmorBreakSound,
+				GetActorLocation()
+			);
+		}
 	}
 }
 
@@ -319,6 +333,15 @@ void APFBossCharacter::UpdateBossPhase()
 
 	BIsPhase2 = true;
 	BossPhase = 2;
+	
+	if (Phase2Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			Phase2Sound,
+			GetActorLocation()
+		);
+	}
 
 	// 2페이즈 강화
 	WalkSpeed += 80.f;
@@ -358,6 +381,18 @@ void APFBossCharacter::StartRoarSummonPattern()
 	UE_LOG(LogTemp, Warning, TEXT("[Boss] Roar Summon Pattern Start"));
 
 	// 나중에 여기서 포효 애니메이션 Montage 재생
+	// 좀비 공통 포효음
+	PlayRoarSound();
+	
+	// 보스 소환 전용 사운드
+	if (SummonSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			SummonSound,
+			GetActorLocation()
+		);
+	}
 	// 지금은 바로 소환 함수 호출 가능
 	SummonMinions();
 
