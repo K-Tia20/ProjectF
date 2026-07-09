@@ -48,14 +48,6 @@ void APFGameMode::BeginPlay()
 		}
 	}
 	
-	AActor* FoundActor = UGameplayStatics::GetActorOfClass(GetWorld(), APFWaveManager::StaticClass());
-	PFWaveManager = Cast<APFWaveManager>(FoundActor);
-
-	if (PFWaveManager == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("GameMode에 PFWaveManager가 할당되어 있지 않음"));
-	}
-	
 	if (PFGameState)
 	{
 		GetWorldTimerManager().SetTimer(PFTimerHandle, this, &APFGameMode::TimerCountDown, 0.1f, true);
@@ -158,15 +150,19 @@ void APFGameMode::ProceedToNextLevel()
 {
 	if (!PFGameState) return;
 
-	int32 NextLevel = PFGameState->GetCurrentLevel() + 1;
+	int32 NextLevelNum = PFGameState->GetCurrentLevel() + 1;
 
-	if (NextLevel <= 4)
+	if (NextLevelNum <= 4)
 	{
-		PFGameState->SetCurrentLevel(NextLevel);
+		PFGameState->SetCurrentLevel(NextLevelNum);
 		PFGameState->SetCurrentWave(1); 
         
-		UE_LOG(LogTemp, Warning, TEXT("Level %d 클리어! 다음 레벨로 넘어갑니다."), NextLevel - 1);
-		StartWave(); 
+		UE_LOG(LogTemp, Warning, TEXT("Level %d 클리어! 다음 레벨로 넘어갑니다."), NextLevelNum - 1);
+		
+		FString LevelNameString = FString::Printf(TEXT("L_Stage%d"), NextLevelNum);
+		FName NextLevelName = FName(*LevelNameString);
+		
+		UGameplayStatics::OpenLevel(GetWorld(), NextLevelName);
 	}
 	else
 	{

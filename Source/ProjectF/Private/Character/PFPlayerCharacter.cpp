@@ -133,8 +133,7 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
 
        
-        EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::OnInteract);
-    }
+EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnInteract);    }
 }
 
 // [추가] 상호작용 함수 구현
@@ -144,7 +143,7 @@ void APFPlayerCharacter::OnInteract()
     if (TargetPortal)
     {
         // 포탈을 가동
-        TargetPortal->Interact();
+        TargetPortal->Interact(this);
     }
 }
 
