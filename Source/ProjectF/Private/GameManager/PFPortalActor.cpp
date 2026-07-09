@@ -34,5 +34,4 @@ void APFPortalActor :: SpawnMonster(TSubclassOf<APawn> MonsterClass, bool bIsBos
 	{
 		SpawnedMonster->bIsBoss = bIsBoss;
 	}
-	GetWorld()->SpawnActor<APawn>(MonsterClass, SpawnLocation, SpawnRotation, SpawnParams);
 }

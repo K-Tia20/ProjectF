@@ -25,6 +25,9 @@ public:
 	
 	void ProceedToNextLevel();
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<class UUserWidget> LoadingWidgetClass;
+	
 protected:
 	
 	virtual void BeginPlay() override;
@@ -53,4 +56,6 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Rules", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<APFLevelPortal> LevelPortalClass;
+	
+	
 };
