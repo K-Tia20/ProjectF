@@ -9,17 +9,19 @@
 #include "GameFramework/DamageType.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/SkeletalMeshComponent.h"
 
-//최신2026-07-09
+//최신2026-07-10
 APFMonsterCharacter::APFMonsterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
 	AttackBox = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackBox"));
-	AttackBox->SetupAttachment(GetRootComponent());
-	
-	AttackBox->SetBoxExtent(FVector(80.f,80.f,80.f));
-	AttackBox->SetRelativeLocation(FVector(120.f, 0.f, 0.f));
+	AttackBox->SetupAttachment(GetMesh(), TEXT("AttackSocket_R"));
+
+	AttackBox->SetBoxExtent(FVector(30.f, 30.f, 30.f));
+	AttackBox->SetRelativeLocation(FVector::ZeroVector);
+	AttackBox->SetRelativeRotation(FRotator::ZeroRotator);
 	
 	AttackBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AttackBox->SetCollisionObjectType(ECC_WorldDynamic);
@@ -31,6 +33,26 @@ APFMonsterCharacter::APFMonsterCharacter()
 void APFMonsterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (AttackBox && GetMesh())
+	{
+		AttackBox->AttachToComponent(
+			GetMesh(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+			TEXT("AttackSocket_R")
+		);
+
+		AttackBox->SetRelativeLocation(FVector::ZeroVector);
+		AttackBox->SetRelativeRotation(FRotator::ZeroRotator);
+
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Monster] AttackBox Parent: %s / Socket: %s"),
+			*GetNameSafe(AttackBox->GetAttachParent()),
+			*AttackBox->GetAttachSocketName().ToString()
+		);
+	}
 	
 	CurrentHP = MaxHP;
 	
@@ -83,17 +105,25 @@ void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount, AActor* Dama
 
 void APFMonsterCharacter::Attack()
 {
-	if (IsDead)
-	{
-		return;
-	}
-	
-	if (!CanAttack)
+	if (IsDead || !CanAttack || bIsAttacking)
+
 	{
 		return;
 	}
 	
 	CanAttack= false;
+	bIsAttacking = true;
+	
+	if (AController* MyController = GetController())
+	{
+		MyController->StopMovement();
+	}
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
 	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] Attack"));
 	
@@ -114,9 +144,7 @@ void APFMonsterCharacter::Attack()
 			GetActorLocation()
 		);
 	}
-	
-	EnableAttackBox();
-	
+		
 	GetWorldTimerManager().SetTimer(
 		AttackTimerHandle,
 		this,
@@ -132,12 +160,65 @@ void APFMonsterCharacter::Die()
 	{
 		return;
 	}
-	
+
 	IsDead = true;
 	CurrentHP = 0.f;
-	
-	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die"));
-	//사운드
+	bIsAttacking = false;
+	CanAttack = false;
+
+	HitActorsThisAttack.Empty();
+
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Die - Ragdoll"));
+
+	// 공격 관련 타이머 및 판정 정리
+	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
+
+	DisableAttackBox();
+
+	// AI 이동 중지
+	if (AController* MyController = GetController())
+	{
+		MyController->StopMovement();
+	}
+
+	// 캐릭터 이동 중지
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 재생 중인 공격 몽타주 중지
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = MeshComp->GetAnimInstance())
+		{
+			AnimInstance->Montage_Stop(0.05f);
+		}
+	}
+
+	// 캐릭터 캡슐 충돌 제거
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		CapsuleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	// 스켈레탈 메시를 레그돌로 전환
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
+		MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+		// 플레이어가 시체에 걸리지 않게 설정
+		MeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+		MeshComp->SetAllBodiesSimulatePhysics(true);
+		MeshComp->SetSimulatePhysics(true);
+		MeshComp->WakeAllRigidBodies();
+	}
+
+	// 죽음 사운드
 	if (DeathSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
@@ -146,38 +227,19 @@ void APFMonsterCharacter::Die()
 			GetActorLocation()
 		);
 	}
-	
-	if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
+
+	// 게임 모드에 몬스터 사망 알림
+	if (APFGameMode* GameMode =
+		Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GameMode->OnMonsterKilled();
 	}
-	
-	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
-	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
 
-	DisableAttackBox();
-	
-	if (AController* MyController = GetController())
-	{
-		MyController->StopMovement();
-	}
-
-	if (GetCharacterMovement())
-	{
-		GetCharacterMovement()->StopMovementImmediately();
-		GetCharacterMovement()->DisableMovement();
-	}
-
-	if (GetCapsuleComponent())
-	{
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
-
+	// 일정 시간 후 시체 제거
 	if (BDestroyOnDeath)
 	{
 		SetLifeSpan(DestroyDelay);
 	}
-
 }
 
 void APFMonsterCharacter::ResetAttack()
@@ -195,21 +257,25 @@ bool APFMonsterCharacter::IsMonsterDead() const
 
 void APFMonsterCharacter::EnableAttackBox()
 {
+	if (!AttackBox)
+	{
+		return;
+	}
+	
 	AttackBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	AttackBox->UpdateOverlaps();
 	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] AttackBox ON"));
-	
-	GetWorld()->GetTimerManager().SetTimer(
-		AttackBoxTimerHandle,
-		this,
-		&APFMonsterCharacter::DisableAttackBox,
-		0.2f,
-		false
-		);
+		
 }
 
 void APFMonsterCharacter::DisableAttackBox()
 {
+	if (!AttackBox ||
+		AttackBox->GetCollisionEnabled() == ECollisionEnabled::NoCollision)
+	{
+		return;
+	}
 	AttackBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] AttackBox OFF"));
@@ -223,15 +289,26 @@ void APFMonsterCharacter::OnAttackBoxOverlap(
 	bool bFromSweep, 
 	const FHitResult& SweepResult)
 {
-	if (!OtherActor||OtherActor ==this)
+	if (!OtherActor || OtherActor == this || IsDead || !bIsAttacking)
 	{
 		return;
 	}
 	
-	if (IsDead)
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+
+	if (OtherActor != PlayerPawn)
 	{
 		return;
 	}
+	
+	// 이번 공격에서 이미 맞은 액터면 중복 데미지 방지
+	if (HitActorsThisAttack.Contains(OtherActor))
+	{
+		return;
+	}
+
+	// 데미지를 주기 전에 기록
+	HitActorsThisAttack.Add(OtherActor);
 	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Hit: %s"), *OtherActor->GetName());
 	
@@ -257,4 +334,41 @@ void APFMonsterCharacter::OnAttackBoxOverlap(
 void APFMonsterCharacter::OnDamaged(AActor* DamageCauser)
 {
 	
+}
+
+void APFMonsterCharacter::StartAttackHit()
+{
+	if (IsDead || !bIsAttacking)
+	{
+		return;
+	}
+	
+	// 새로운 공격 타격 구간이므로 이전 기록 제거
+	HitActorsThisAttack.Empty();
+
+	EnableAttackBox();
+}
+
+void APFMonsterCharacter::EndAttackHit()
+{
+	DisableAttackBox();
+}
+
+void APFMonsterCharacter::FinishAttack()
+{
+	DisableAttackBox();
+	
+	HitActorsThisAttack.Empty();
+	
+	if (!IsDead)
+	{
+		if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+		{
+			Movement->SetMovementMode(MOVE_Walking);
+		}
+	}
+	
+	bIsAttacking = false;
+		
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Finished"));
 }
