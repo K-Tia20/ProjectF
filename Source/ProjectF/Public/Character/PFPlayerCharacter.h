@@ -10,7 +10,7 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UPFCombatComponent;
-class APFLevelPortal; // [추가] 포탈 클래스 전방 선언
+class APFLevelPortal; // 포탈 클래스 전방 선언
 
 UCLASS()
 class PROJECTF_API APFPlayerCharacter : public ACharacter
@@ -22,17 +22,25 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float Health = 100.0f;
-    
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float MaxHealth = 100.0f;
-    
+
+    //  캐릭터가 죽었는지 체크하는 변수
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+    bool bIsDead = false;
+
+    // 캐릭터 사망 시 호출될 함수
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void Die();
+
     virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-    // [추가] 힐 아이템 사용(Overlap)시 호출
+    // 힐 아이템 사용시 호출
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void Heal(float HealAmount);
 
-    // [추가] 현재 다가가 있는 포탈을 세팅하고 가져올 Getter/Setter
+    
     void SetTargetPortal(class APFLevelPortal* Portal) { TargetPortal = Portal; }
     class APFLevelPortal* GetTargetPortal() const { return TargetPortal; }
 
@@ -42,25 +50,25 @@ protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
 
-    // [추가] 상호작용 인풋 액션 변수
+    // 상호작용 인풋 액션 변수
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractAction;
 
-    // [추가] F키(상호작용)를 눌렀을 때 실행될 함수
+    // F키(상호작용)를 눌렀을 때 실행될 함수
     void OnInteract();
 
-public: 
+public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     UPFCombatComponent* CombatComponent;
-    
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
     UInputAction* FireAction;
-    
+
     void Fire(const FInputActionValue& Value);
-    
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
     USpringArmComponent* CameraBoom;
 
@@ -78,11 +86,11 @@ private:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
     UInputAction* LookAction;
-    
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* FireMontage;
 
-    // [추가] 현재 플레이어가 닿아있는 포탈을 보관할 변수
+    // 현재 플레이어가 닿아있는 포탈을 보관할 변수
     UPROPERTY()
     APFLevelPortal* TargetPortal;
 };
