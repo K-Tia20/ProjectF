@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include  "GameManager/PFGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/DamageType.h"
 
 //최신2026-07-09
 APFMonsterCharacter::APFMonsterCharacter()
@@ -215,7 +216,22 @@ void APFMonsterCharacter::OnAttackBoxOverlap(
 	{
 		return;
 	}
+	
+	if (IsDead)
+	{
+		return;
+	}
+	
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Hit: %s"), *OtherActor->GetName());
+	
+	UGameplayStatics::ApplyDamage(
+		OtherActor,
+		AttackDamage,
+		GetController(),
+		this,
+		UDamageType::StaticClass()
+	);
+	
 	//사운드
 	if (AttackHitSound)
 	{
