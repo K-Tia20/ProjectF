@@ -7,6 +7,8 @@
 #include "GameFramework/Character.h"
 #include "PFMonsterCharacter.generated.h"
 
+class UAnimMontage;
+
 UCLASS()
 class PROJECTF_API APFMonsterCharacter : public ACharacter
 {
@@ -128,4 +130,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
 	USoundBase* AttackHitSound = nullptr;
+	
+	// =====================================================
+	// Animation
+	// =====================================================
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	UAnimMontage* AttackMontage = nullptr;
+	
 };

@@ -7,6 +7,8 @@
 #include  "GameManager/PFGameMode.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
 
 //최신2026-07-09
 APFMonsterCharacter::APFMonsterCharacter()
@@ -94,6 +96,15 @@ void APFMonsterCharacter::Attack()
 	CanAttack= false;
 	
 	UE_LOG(LogTemp,Warning,TEXT("[Monster] Attack"));
+	
+	if (AttackMontage && GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			AnimInstance->Montage_Play(AttackMontage);
+		}
+	}
+	
 	//사운드
 	if (AttackSound)
 	{
