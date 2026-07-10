@@ -48,6 +48,17 @@ void APFBasicZombie::DetectPlayer()
 	{
 		return;
 	}
+	
+	// 공격 애니메이션 중에는 감지 및 추적 명령을 새로 내리지 않는다.
+	if (bIsAttacking)
+	{
+		if (AAIController* AIController = Cast<AAIController>(GetController()))
+		{
+			AIController->StopMovement();
+		}
+
+		return;
+	}
 
 	AActor* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 
@@ -220,7 +231,7 @@ bool APFBasicZombie::HasLineOfSight(AActor* Player)
 
 void APFBasicZombie::ChasePlayer()
 {
-	if (!TargetActor)
+	if (bIsAttacking || !TargetActor)
 	{
 		return;
 	}
