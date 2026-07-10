@@ -1,26 +1,26 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Weapon/PFGrenade.h"
+#include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
 
-// Sets default values
 APFGrenade::APFGrenade()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-}
+	PrimaryActorTick.bCanEverTick = false;
 
-// Called when the game starts or when spawned
-void APFGrenade::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
+	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
+	CollisionComponent->InitSphereRadius(10.0f);
+	CollisionComponent->SetCollisionProfileName(TEXT("BlockAll"));
+	RootComponent = CollisionComponent;
 
-// Called every frame
-void APFGrenade::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
+	GrenadeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GrenadeMesh"));
+	GrenadeMesh->SetupAttachment(RootComponent);
 
+	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
+	ProjectileMovement->UpdatedComponent = CollisionComponent;
+	ProjectileMovement->InitialSpeed = 1500.f;
+	ProjectileMovement->MaxSpeed = 1500.f;
+	ProjectileMovement->bRotationFollowsVelocity = true;
+	ProjectileMovement->bShouldBounce = true;
+	ProjectileMovement->Bounciness = 0.3f;
+}

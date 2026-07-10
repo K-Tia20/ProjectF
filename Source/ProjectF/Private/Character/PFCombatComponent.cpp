@@ -2,22 +2,42 @@
 #include "DrawDebugHelpers.h"
 #include "Monster/PFMonsterCharacter.h" 
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"     // [추가] Cast<ACharacter> 및 구조 활용을 위해 필수 인클루드
+#include "Components/StaticMeshComponent.h" // [추가] 가시성 및 컴포넌트 제어를 위해 필수 인클루드
+#include "weapon/PFGrenade.h"
 
 UPFCombatComponent::UPFCombatComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
+
+    // [추가] 생성자 시점에서 눈속임용 수류탄 메쉬의 기본 뼈대 컴포넌트 생성
+    HandGrenadeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HandGrenadeMesh"));
 }
 
 void UPFCombatComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    // [추가] 게임 시작 시 주인 캐릭터의 메쉬 소켓에 눈속임용 메쉬를 안전하게 부착
+    ACharacter* Character = Cast<ACharacter>(GetOwner());
+    if (Character && Character->GetMesh() && HandGrenadeMesh)
+    {
+        HandGrenadeMesh->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetIncludingScale,
+            HandSocketName
+        );
+        
+        // 평소에는 보이지 않도록 숨기고, 충돌 판정을 꺼서 버그를 방지합니다.
+        HandGrenadeMesh->SetVisibility(false);
+        HandGrenadeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 }
 
 void UPFCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
-
 
 void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 {
@@ -30,7 +50,7 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
         CurrentWeaponMesh->DestroyComponent();
     }
 
-    //  새로운 무기 메시 컴포넌트 생성
+    // 새로운 무기 메시 컴포넌트 생성
     CurrentWeaponMesh = NewObject<UStaticMeshComponent>(Owner);
     CurrentWeaponMesh->RegisterComponent();
     CurrentWeaponMesh->SetStaticMesh(WeaponMesh);
@@ -39,7 +59,6 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
     USkeletalMeshComponent* CharacterMesh = Cast<ACharacter>(Owner)->GetMesh();
     CurrentWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("WeaponSocket"));
 }
-
 
 // 무기 교체 로직 무기마다 사거리 데미지가 다름 
 void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
@@ -64,22 +83,75 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         AttackRange = 10000.f;
         break;
     }
-
     
     CurrentAmmo = MaxAmmo; 
     
     UE_LOG(LogTemp, Warning, TEXT("[Combat] 무기 교체됨! 현재 무기 탄약: %d, 데미지: %f"), CurrentAmmo, AttackDamage);
 }
 
+// 애니메이션 재생 함수
+void UPFCombatComponent::PlayThrowAnimation()
+{
+    if (GrenadeCount <= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Combat] 수류탄이 없습니다!"));
+        return;
+    }
+
+    AActor* Owner = GetOwner();
+    ACharacter* Character = Cast<ACharacter>(Owner);
+    
+    if (Character && ThrowMontage)
+    {
+        // [추가] 던지기 몽타주가 시작되는 프레임에 손에 쥔 가짜 수류탄을 보이게 활성화합니다.
+        if (HandGrenadeMesh)
+        {
+            HandGrenadeMesh->SetVisibility(true);
+        }
+
+        // 몽타주 재생 (애니메이션 시작)
+        Character->PlayAnimMontage(ThrowMontage);
+    }
+}
+
+// 실제 수류탄이 스폰되어 날아가는 함수
+void UPFCombatComponent::ExecuteThrow()
+{
+    AActor* Owner = GetOwner();
+    ACharacter* Character = Cast<ACharacter>(Owner);
+
+    if (!Character || !GrenadeClass || GrenadeCount <= 0) return;
+
+    // [추가] 손을 뻗어 던지는 노티파이 타이밍이 왔으므로 가짜 수류탄은 다시 보이지 않게 숨깁니다.
+    if (HandGrenadeMesh)
+    {
+        HandGrenadeMesh->SetVisibility(false);
+    }
+
+    GrenadeCount--;
+    UE_LOG(LogTemp, Warning, TEXT("[Combat] 수류탄 투척! 남은 개수: %d"), GrenadeCount);
+
+    // [수정] 스폰될 위치를 고정 리터럴 대신 헤더에 선언한 HandSocketName 변수를 활용하도록 변경
+    FVector SpawnLocation = Character->GetMesh()->GetSocketLocation(HandSocketName); 
+    
+    // 카메라가 바라보는 방향으로 던지기
+    FRotator SpawnRotation = Character->GetControlRotation();
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = Owner;
+    SpawnParams.Instigator = Character;
+
+    // 월드에 수류탄 액터 스폰
+    GetWorld()->SpawnActor<APFGrenade>(GrenadeClass, SpawnLocation, SpawnRotation, SpawnParams);
+}
+
 void UPFCombatComponent::FireWeapon()
 {
-    
     if (CurrentAmmo <= 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Combat] 총알이 부족하여 사격할 수 없습니다!"));
         return;
     }
-
     
     CurrentAmmo--;
     UE_LOG(LogTemp, Warning, TEXT("[Combat] 사격! 남은 총알: %d / %d"), CurrentAmmo, MaxAmmo);

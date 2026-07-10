@@ -12,7 +12,7 @@ class PROJECTF_API APFGrenadeItem : public APFBaseItem
 	GENERATED_BODY()
     
 protected:
-	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
+	//virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
 
 	// 보급해 줄 수류탄 개수
 	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
