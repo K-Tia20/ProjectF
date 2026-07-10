@@ -61,6 +61,12 @@ public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    class UInputAction* ThrowGrenadeAction;
+
+    void ThrowGrenade();
+    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     UPFCombatComponent* CombatComponent;
 
@@ -89,6 +95,10 @@ private:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* FireMontage;
+
+    // [추가] 캐릭터 사망 시 재생할 애니메이션 몽타주 변수
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+    class UAnimMontage* DeathMontage;
 
     // 현재 플레이어가 닿아있는 포탈을 보관할 변수
     UPROPERTY()
