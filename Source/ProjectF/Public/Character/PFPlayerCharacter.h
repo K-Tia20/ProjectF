@@ -43,6 +43,9 @@ public:
     
     void SetTargetPortal(class APFLevelPortal* Portal) { TargetPortal = Portal; }
     class APFLevelPortal* GetTargetPortal() const { return TargetPortal; }
+    
+    // 희진님 추가 요청 +히트마커
+    void ShowHitMarker(); 
 
 protected:
     virtual void BeginPlay() override;
@@ -75,6 +78,12 @@ private:
 
     void Fire(const FInputActionValue& Value);
 
+    //  무기 교체 인풋 액션 및 처리 함수 선언
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    class UInputAction* SwitchWeaponAction;
+
+    void ChangeWeaponInput(const FInputActionValue& Value);
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
     USpringArmComponent* CameraBoom;
 
@@ -96,7 +105,7 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* FireMontage;
 
-    // [추가] 캐릭터 사망 시 재생할 애니메이션 몽타주 변수
+    // [추가된 코드] 캐릭터 사망 시 재생할 애니메이션 몽타주 변수
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* DeathMontage;
 

@@ -2,15 +2,16 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Components/CapsuleComponent.h"    // [추가] UCapsuleComponent 제어를 위해 인클루드 추가
+#include "Components/CapsuleComponent.h"    // [추가된 코드] UCapsuleComponent 제어를 위해 인클루드 추가
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Character/PFCombatComponent.h"
+#include "Character/PFCombatComponent.h"    // EWeaponType 사용을 위해 이미 포함되어 있음
 #include "GameManager/PFPlayerController.h"
 #include "GameManager/PFGameInstance.h" 
 #include "GameManager/PFLevelPortal.h"      
 #include "GameManager/PFGameMode.h"         
 #include "Animation/AnimInstance.h"
+
 
 APFPlayerCharacter::APFPlayerCharacter()
 {
@@ -38,6 +39,15 @@ APFPlayerCharacter::APFPlayerCharacter()
     // 캐릭터에 컴뱃 컴포넌트 부착
     CombatComponent = CreateDefaultSubobject<UPFCombatComponent>(TEXT("CombatComponent"));
 }
+
+// 히트마커 호출 구현시 주석 제거 
+//void APFPlayerCharacter::ShowHitMarker()
+//{
+   // if (APFPlayerController* PC = Cast<APFPlayerController>(GetController()))
+   // {
+      //  PC->ShowHitMarker();
+    //}
+// }
 
 // 수류탄 던지기 명령 실행 함수
 void APFPlayerCharacter::ThrowGrenade()
@@ -81,14 +91,14 @@ void APFPlayerCharacter::Die()
 
     GetCharacterMovement()->DisableMovement();
 
-    // [추가] 캡슐 컴포넌트의 충돌을 완전히 제거하여 메쉬와 충돌이 꼬이는 현상을 방지합니다.
+    // [추가된 코드] 사망 시 캡슐 컴포넌트 충돌 제거
     if (GetCapsuleComponent())
     {
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
     }
 
-    // [수정] 랙돌 물리를 켜서 전신을 바닥에 눕힙니다.
+    // [추가된 코드] 랙돌 물리를 켜서 전신을 바닥에 눕힙니다.
     if (GetMesh())
     {
         GetMesh()->SetSimulatePhysics(true);
@@ -162,7 +172,6 @@ void APFPlayerCharacter::BeginPlay()
     }
 }
 
-// 이 함수 안으로 바인딩 코드가 안전하게 들어왔습니다!
 void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
@@ -174,8 +183,11 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
         EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnInteract);
         
-        // [수정 완] G키 입력 시 ThrowGrenade 함수가 호출되도록 바인딩 추가
+        // [추가된 코드] G키(또는 할당된 키) 입력 시 ThrowGrenade 함수가 호출되도록 바인딩
         EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ThrowGrenade);
+
+        // [추가된 코드] 무기 교체 인풋 바인딩
+        EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ChangeWeaponInput);
     }
 }
 
@@ -219,5 +231,30 @@ void APFPlayerCharacter::Look(const FInputActionValue& Value)
     {
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
+    }
+}
+
+// 캐릭터에서 무기 교체 키 입력이 들어왔을 때 실행될 로직
+void APFPlayerCharacter::ChangeWeaponInput(const FInputActionValue& Value)
+{
+    if (bIsDead) return;
+
+    if (CombatComponent)
+    {
+       
+        float WeaponIndex = Value.Get<float>();
+        
+        if (WeaponIndex == 1.0f)
+        {
+            CombatComponent->SwitchWeapon(EWeaponType::Pistol);
+        }
+        else if (WeaponIndex == 2.0f)
+        {
+            CombatComponent->SwitchWeapon(EWeaponType::Rifle);
+        }
+        else if (WeaponIndex == 3.0f)
+        {
+            CombatComponent->SwitchWeapon(EWeaponType::Sniper);
+        }
     }
 }
