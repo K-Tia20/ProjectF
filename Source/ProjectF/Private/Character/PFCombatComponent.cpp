@@ -293,3 +293,17 @@ void UPFCombatComponent::FireWeapon()
        }
     }
 }
+
+
+
+void UPFCombatComponent::AddGrenades(int32 Amount)
+{
+    if (Amount <= 0) return;
+
+    // 수류탄 개수 증가
+    GrenadeCount += Amount;
+    
+    GrenadeCount = FMath::Clamp(GrenadeCount, 0, 3);
+
+    UE_LOG(LogTemp, Warning, TEXT("[Combat] 수류탄 획득! 현재 개수: %d"), GrenadeCount);
+}
