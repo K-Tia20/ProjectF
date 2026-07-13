@@ -14,6 +14,6 @@ class PROJECTF_API APFHealingItem : public APFBaseItem
 protected:
 	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
 
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
-	// float HealAmount = 20.f;
+	 UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
+	 float HealAmount = 20.f;
 };
