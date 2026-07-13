@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "PFBaseItem.h"
+#include "GameFramework/Actor.h"
+#include "Character/PFCombatComponent.h"
+#include "Item/PFBaseItem.h"
 #include "PFAmmoItem.generated.h"
 
 UCLASS()
@@ -11,9 +13,17 @@ class PROJECTF_API APFAmmoItem : public APFBaseItem
 {
 	GENERATED_BODY()
     
+public:
+	APFAmmoItem();
+
 protected:
 	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter) override;
 
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item | Properties")
-	// int32 AmmoAmount = 30;
+	//BP에서 작업
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ammo Settings")
+	EWeaponType TargetWeaponType = EWeaponType::Pistol;
+
+	//BP에서 작업
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ammo Settings")
+	int32 AmmoAmount = 15;
 };
