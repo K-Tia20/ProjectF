@@ -77,7 +77,11 @@ void APFPlayerController::ShowMainMenu(bool bIsRestart, bool bIsClear)
 		{
 			MainMenuWidgetInstance->AddToViewport();
 			bShowMouseCursor = true;
-			SetInputMode(FInputModeUIOnly());
+
+			FInputModeUIOnly InputModeData;
+			InputModeData.SetWidgetToFocus(MainMenuWidgetInstance->TakeWidget());
+    
+			SetInputMode(InputModeData);
 		}
 
 		UTextBlock* TitleText = Cast<UTextBlock>(MainMenuWidgetInstance->GetWidgetFromName(TEXT("GameOverText")));
@@ -147,6 +151,46 @@ void APFPlayerController::UpdateTimer(int32 Min, int32 Sec, int32 Ms)
 }
 
 
+void APFPlayerController::UpdateAmmoUI(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	FString Command = FString::Printf(TEXT("UpdateAmmoUI %d %d"), CurrentAmmo, MaxAmmo);
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+}
+
+void APFPlayerController::UpdateDashCooldownUI(float DashCooldown)
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	FString Command = FString::Printf(TEXT("UpdateDashCooldownUI %f"), DashCooldown);
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+}
+
+void APFPlayerController::UpdateGrenadeCountUI(int32 GrenadeCount)
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	FString Command = FString::Printf(TEXT("UpdateGrenadeCountUI %d"), GrenadeCount);
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+}
+
+void APFPlayerController::UpdateWeaponNameUI(const FString& WeaponName)
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	// 문자열 인자는 양옆에 큰따옴표(\")를 붙여 감싸주어야 공백이나 특수문자 오류가 안 납니다.
+	FString Command = FString::Printf(TEXT("UpdateWeaponNameUI \"%s\""), *WeaponName);
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+}
+
+void APFPlayerController::ShowItemNotification(const FString& ItemName, int32 Amount)
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	FString Command = FString::Printf(TEXT("ShowItemNotification \"%s\" %d"), *ItemName, Amount);
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+}
 
 
 void APFPlayerController::ShowGameOver(bool bIsClear)
@@ -155,7 +199,15 @@ void APFPlayerController::ShowGameOver(bool bIsClear)
 	if (GameOverWidgetClass)
 	{
 		GameOverWidgetInstance = CreateWidget<UUserWidget>(this, GameOverWidgetClass);
-		if (GameOverWidgetInstance) { GameOverWidgetInstance->AddToViewport(); bShowMouseCursor = true; SetInputMode(FInputModeUIOnly()); }
+		if (GameOverWidgetInstance)
+		{
+			GameOverWidgetInstance->AddToViewport(); 
+			bShowMouseCursor = true; 
+			FInputModeUIOnly InputModeData;
+			InputModeData.SetWidgetToFocus(GameOverWidgetInstance->TakeWidget());
+    
+			SetInputMode(InputModeData);
+		}
 	}
 }
 

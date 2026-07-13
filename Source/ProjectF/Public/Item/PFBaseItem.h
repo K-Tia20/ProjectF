@@ -26,6 +26,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Components")
 	UStaticMeshComponent* ItemMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Info")
+	FString ItemDisplayName = TEXT("Default Item");
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Info")
+	int32 ItemAmount = 1;
+	
 	UFUNCTION()
 	virtual void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 

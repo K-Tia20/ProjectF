@@ -66,7 +66,7 @@ public:
 
     // 현재 들고 있는 무기
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
-    EWeaponType CurrentWeapon = EWeaponType::Rifle;
+    EWeaponType CurrentWeapon = EWeaponType::Pistol;
 
     // 현재 남은 총알
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
