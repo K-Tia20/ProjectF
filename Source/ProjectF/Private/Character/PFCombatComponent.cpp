@@ -126,6 +126,20 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     UE_LOG(LogTemp, Warning, TEXT("[Combat] 무기 교체됨! 현재 무기 탄약: %d, 데미지: %f"), CurrentAmmo, AttackDamage);
 }
 
+// 찬우님 요청 [추가] #88
+void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
+{
+    
+    if (CurrentWeapon == WeaponType)
+    {
+        
+        CurrentAmmo = FMath::Clamp(CurrentAmmo + Amount, 0, MaxAmmo);
+
+        UE_LOG(LogTemp, Warning, TEXT("[Combat] 탄약 획득! 현재 무기 탄약: %d / %d"), CurrentAmmo, MaxAmmo);
+        
+        // 나중에 UI에서 총알 정보(남은 총알 갯수) 출력하는 함수 넣어달라하면 여기에서 호출
+    }
+}
 
 void UPFCombatComponent::PlayThrowAnimation()
 {
