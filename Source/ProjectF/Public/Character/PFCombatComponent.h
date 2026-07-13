@@ -80,6 +80,13 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
     void AddAmmo(EWeaponType WeaponType, int32 Amount);
 
+    // 수류탄 증가 함수
+    UFUNCTION(BlueprintCallable, Category = "Combat|Grenade")
+    void AddGrenades(int32 Amount);
+
+    UFUNCTION(BlueprintPure, Category = "Combat|Grenade")
+    int32 GetGrenadeCount() const { return GrenadeCount; }
+    
     // 수류탄 갯수
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     int32 GrenadeCount = 3;
