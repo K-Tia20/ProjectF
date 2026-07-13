@@ -179,7 +179,6 @@ void APFPlayerController::UpdateWeaponNameUI(const FString& WeaponName)
 {
 	if (HUDWidgetInstance == nullptr) return;
 	FOutputDeviceNull Ar;
-	// 문자열 인자는 양옆에 큰따옴표(\")를 붙여 감싸주어야 공백이나 특수문자 오류가 안 납니다.
 	FString Command = FString::Printf(TEXT("UpdateWeaponNameUI \"%s\""), *WeaponName);
 	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
 }

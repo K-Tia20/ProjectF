@@ -127,8 +127,8 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         }
 
         // 3. UI 업데이트 함수 호출
-        PlayerController->UpdateWeaponNameUI(NameToShow); // 👈 세미콜론 꼭 확인!
-    } // 👈 괄호 매칭 확인
+        PlayerController->UpdateWeaponNameUI(NameToShow);
+    }
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -173,8 +173,6 @@ void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
             }
         }
         UE_LOG(LogTemp, Warning, TEXT("[Combat] 탄약 획득! 현재 무기 탄약: %d / %d"), CurrentAmmo, MaxAmmo);
-        
-        // 나중에 UI에서 총알 정보(남은 총알 갯수) 출력하는 함수 넣어달라하면 여기에서 호출
     }
 }
 
