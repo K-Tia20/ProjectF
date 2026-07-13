@@ -259,8 +259,8 @@ void APFBasicZombie::HandleLostTarget()
 		LastKnownLocationTimerHandle,
 		this,
 		&APFBasicZombie::CheckLastKnownLocation,
-		2.0f,
-		false
+		0.3f,
+		true
 	);
 }
 
@@ -287,16 +287,43 @@ void APFBasicZombie::CheckLastKnownLocation()
 {
 	if (IsDead)
 	{
+		GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
 		return;
 	}
 
 	// 다시 플레이어를 찾은 상태면 마지막 위치 처리 중단
 	if (TargetActor)
 	{
+		GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
+		BMovingToLastKnownLocation = false;
 		return;
 	}
+	
+	// 높이 차이는 제외하고 평면 거리만 확인
+	const float DistanceToLastKnownLocation = FVector::Dist2D(
+		GetActorLocation(),
+		LastKnownLocation
+	);
 
+	// NavMesh 때문에 정확히 같은 위치에는 못 갈 수 있으므로 약간의 여유를 둔다.
+	const float ReachDistance = MoveAcceptanceRadius + 50.f;
+	
+	// 아직 도착하지 않았으면 다음 타이머 검사까지 대기
+	if (DistanceToLastKnownLocation > ReachDistance)
+	{
+		return;
+	}
+	
+	GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
+
+	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		AIController->StopMovement();
+	}
+		
 	BMovingToLastKnownLocation = false;
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Reached Last Known Location / Distance: %f"), DistanceToLastKnownLocation);
 
 	HandleAfterReachedLastKnownLocation();
 }
