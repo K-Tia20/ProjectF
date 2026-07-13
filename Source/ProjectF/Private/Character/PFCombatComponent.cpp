@@ -6,6 +6,12 @@
 #include "Components/StaticMeshComponent.h" // [추가] 가시성 및 컴포넌트 제어를 위해 필수 인클루드
 #include "weapon/PFGrenade.h"
 
+// ---------------------------------------------------------
+// [추가된 코드] 팀원 요청: 레벨 정보를 가져오기 위해 GameState 헤더 추가
+// (프로젝트 폴더 구조에 맞게 경로 확인 필요. 예: GameManager/)
+// ---------------------------------------------------------
+#include "GameManager/PFGameState.h" 
+
 UPFCombatComponent::UPFCombatComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
@@ -63,6 +69,37 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 // 무기 교체 로직 무기마다 사거리 데미지가 다름 
 void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
+    
+    // 총기락
+   
+    int32 CurrentLevel = 1; 
+    // 기본값
+    if (GetWorld())
+    {
+        if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
+        {   
+            CurrentLevel = GameState->GetCurrentLevel(); 
+        }
+    } 
+
+    
+    if (NewWeapon == EWeaponType::Rifle && CurrentLevel < 2)
+    {  
+        UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
+        return; 
+        
+    }
+
+    if (NewWeapon == EWeaponType::Sniper && CurrentLevel < 3)
+    {  
+        UE_LOG(LogTemp, Warning, TEXT("[스나이퍼는 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
+        return; 
+       
+    }
+    
+
+
+    // 기존 로직 
     CurrentWeapon = NewWeapon;
 
     switch (CurrentWeapon)
@@ -89,7 +126,7 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     UE_LOG(LogTemp, Warning, TEXT("[Combat] 무기 교체됨! 현재 무기 탄약: %d, 데미지: %f"), CurrentAmmo, AttackDamage);
 }
 
-// 애니메이션 재생 함수
+
 void UPFCombatComponent::PlayThrowAnimation()
 {
     if (GrenadeCount <= 0)
@@ -103,13 +140,13 @@ void UPFCombatComponent::PlayThrowAnimation()
     
     if (Character && ThrowMontage)
     {
-        // [추가] 던지기 몽타주가 시작되는 프레임에 손에 쥔 가짜 수류탄을 보이게 활성화합니다.
+        // 던지기 몽타주가 시작되는 프레임에 손에 쥔 가짜 수류탄을 보이게 활성화합니다.
         if (HandGrenadeMesh)
         {
             HandGrenadeMesh->SetVisibility(true);
         }
 
-        // 몽타주 재생 (애니메이션 시작)
+        // 몽타주 재생 
         Character->PlayAnimMontage(ThrowMontage);
     }
 }
@@ -122,7 +159,7 @@ void UPFCombatComponent::ExecuteThrow()
 
     if (!Character || !GrenadeClass || GrenadeCount <= 0) return;
 
-    // [추가] 손을 뻗어 던지는 노티파이 타이밍이 왔으므로 가짜 수류탄은 다시 보이지 않게 숨깁니다.
+   
     if (HandGrenadeMesh)
     {
         HandGrenadeMesh->SetVisibility(false);
@@ -131,17 +168,17 @@ void UPFCombatComponent::ExecuteThrow()
     GrenadeCount--;
     UE_LOG(LogTemp, Warning, TEXT("[Combat] 수류탄 투척! 남은 개수: %d"), GrenadeCount);
 
-    // [수정] 스폰될 위치를 고정 리터럴 대신 헤더에 선언한 HandSocketName 변수를 활용하도록 변경
+    
     FVector SpawnLocation = Character->GetMesh()->GetSocketLocation(HandSocketName); 
     
-    // 카메라가 바라보는 방향으로 던지기
+  
     FRotator SpawnRotation = Character->GetControlRotation();
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = Owner;
     SpawnParams.Instigator = Character;
 
-    // 월드에 수류탄 액터 스폰
+   
     GetWorld()->SpawnActor<APFGrenade>(GrenadeClass, SpawnLocation, SpawnRotation, SpawnParams);
 }
 
