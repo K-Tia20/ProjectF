@@ -62,11 +62,11 @@ public:
 	void UpdateGrenadeCountUI(int32 GrenadeCount);
 	void UpdateWeaponNameUI(const FString& WeaponName);
 
-	
 	//  HUD 안에 들어있는 피격 & 상호작용 이벤트 다이렉트 호출용
 	void ShowBloodEffect(float DamageAmount);
 	void ShowInteractionPrompt(const FString& ActionText);
 	void HideInteractionPrompt();
 	void ShowItemNotification(const FString& ItemName, int32 Amount);
+	void ShowHitMarker();
 	
 };
