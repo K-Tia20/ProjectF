@@ -75,6 +75,10 @@ public:
     // 최대탄창
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     int32 MaxAmmo = 30;
+    
+    //총알 늘려주는 함수 [추가] #88
+    UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
+    void AddAmmo(EWeaponType WeaponType, int32 Amount);
 
     // 수류탄 갯수
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
