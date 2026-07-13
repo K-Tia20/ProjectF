@@ -7,6 +7,9 @@
 #include "GameFramework/Character.h"
 #include "PFMonsterCharacter.generated.h"
 
+class UAnimMontage;
+class USoundBase;
+
 UCLASS()
 class PROJECTF_API APFMonsterCharacter : public ACharacter
 {
@@ -33,6 +36,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Status")
 	bool bIsBoss = false;//UI
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Attack")
+	bool bIsAttacking = false;//공격중 상태 확인 변수
 	
 protected:
 	virtual void BeginPlay() override;
@@ -94,12 +100,26 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult
 	);
+	
+	// 현재 공격에서 이미 데미지를 받은 액터들
+	TSet<AActor*> HitActorsThisAttack;
+	
+public:	
+	UFUNCTION(BlueprintCallable, Category = "Monster|Attack")
+	void StartAttackHit();
 
+	UFUNCTION(BlueprintCallable, Category = "Monster|Attack")
+	void EndAttackHit();
 
+	UFUNCTION(BlueprintCallable, Category = "Monster|Attack")
+	void FinishAttack();
+	
+
+		
 	// =====================================================
 	// Death
 	// =====================================================
-
+protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Death")
 	float DestroyDelay = 2.0f;
 
@@ -128,4 +148,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
 	USoundBase* AttackHitSound = nullptr;
+	
+	// =====================================================
+	// Animation
+	// =====================================================
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	UAnimMontage* AttackMontage = nullptr;
+			
 };

@@ -43,6 +43,9 @@ public:
     
     void SetTargetPortal(class APFLevelPortal* Portal) { TargetPortal = Portal; }
     class APFLevelPortal* GetTargetPortal() const { return TargetPortal; }
+    
+    // 희진님 추가 요청 +히트마커
+    void ShowHitMarker(); 
 
 protected:
     virtual void BeginPlay() override;
@@ -61,6 +64,12 @@ public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    class UInputAction* ThrowGrenadeAction;
+
+    void ThrowGrenade();
+    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     UPFCombatComponent* CombatComponent;
 
@@ -68,6 +77,12 @@ private:
     UInputAction* FireAction;
 
     void Fire(const FInputActionValue& Value);
+
+    //  무기 교체 인풋 액션 및 처리 함수 선언
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+    class UInputAction* SwitchWeaponAction;
+
+    void ChangeWeaponInput(const FInputActionValue& Value);
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
     USpringArmComponent* CameraBoom;
@@ -89,6 +104,10 @@ private:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* FireMontage;
+
+    // [추가된 코드] 캐릭터 사망 시 재생할 애니메이션 몽타주 변수
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+    class UAnimMontage* DeathMontage;
 
     // 현재 플레이어가 닿아있는 포탈을 보관할 변수
     UPROPERTY()

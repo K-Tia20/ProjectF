@@ -2,13 +2,16 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"    // [추가된 코드] UCapsuleComponent 제어를 위해 인클루드 추가
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Character/PFCombatComponent.h"
+#include "Character/PFCombatComponent.h"    // EWeaponType 사용을 위해 이미 포함되어 있음
 #include "GameManager/PFPlayerController.h"
 #include "GameManager/PFGameInstance.h" 
 #include "GameManager/PFLevelPortal.h"      
+#include "GameManager/PFGameMode.h"         
 #include "Animation/AnimInstance.h"
+
 
 APFPlayerCharacter::APFPlayerCharacter()
 {
@@ -33,13 +36,32 @@ APFPlayerCharacter::APFPlayerCharacter()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false; 
 
-    // (컴뱃 컴포넌트 관련) 캐릭터에 컴뱃 컴포넌트 부착
+    // 캐릭터에 컴뱃 컴포넌트 부착
     CombatComponent = CreateDefaultSubobject<UPFCombatComponent>(TEXT("CombatComponent"));
+}
+
+// 히트마커 호출 구현시 주석 제거 
+//void APFPlayerCharacter::ShowHitMarker()
+//{
+   // if (APFPlayerController* PC = Cast<APFPlayerController>(GetController()))
+   // {
+      //  PC->ShowHitMarker();
+    //}
+// }
+
+// 수류탄 던지기 명령 실행 함수
+void APFPlayerCharacter::ThrowGrenade()
+{
+    if (bIsDead) return;
+    
+    if (CombatComponent)
+    {
+        CombatComponent->PlayThrowAnimation();
+    }
 }
 
 float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
-    // [추가] 이미 죽은 상태면 데미지 무시
     if (bIsDead) return 0.0f;
 
     float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
@@ -49,7 +71,6 @@ float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
     if (Health <= 0.0f)
     {
         Health = 0.0f;
-        // [추가] 체력이 0이 되면 사망 함수 호출
         Die(); 
     }
 
@@ -63,21 +84,39 @@ float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
     return ActualDamage;
 }
 
-// [추가] 캐릭터 사망 함수 구현
 void APFPlayerCharacter::Die()
 {
     bIsDead = true;
     UE_LOG(LogTemp, Warning, TEXT("플레이어 사망!"));
 
-    // 죽었을 때 움직임 비활성화
     GetCharacterMovement()->DisableMovement();
-    
-    // (선택) 여기에 죽음 애니메이션 몽타주 재생 코드 등을 추가할 수 있습니다.
+
+    // [추가된 코드] 사망 시 캡슐 컴포넌트 충돌 제거
+    if (GetCapsuleComponent())
+    {
+        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+    }
+
+    // [추가된 코드] 랙돌 물리를 켜서 전신을 바닥에 눕힙니다.
+    if (GetMesh())
+    {
+        GetMesh()->SetSimulatePhysics(true);
+        GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+    }
+
+    // 사망 시 현재 월드의 게임모드를 가져와 GameOver() 함수를 호출합니다.
+    if (GetWorld())
+    {
+        if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
+        {
+            GameMode->GameOver();
+        }
+    }
 }
 
 void APFPlayerCharacter::Heal(float HealAmount)
 {
-    // [추가] 죽었으면 힐팩 효과 없음
     if (bIsDead) return;
 
     Health = FMath::Clamp(Health + HealAmount, 0.f, MaxHealth);
@@ -91,7 +130,6 @@ void APFPlayerCharacter::Heal(float HealAmount)
 
 void APFPlayerCharacter::Fire(const FInputActionValue& Value)
 {
-    // [추가] 죽었을 때는 사격 금지
     if (bIsDead) return;
 
     UE_LOG(LogTemp, Warning, TEXT("Fire 함수가 호출되었습니다!"));
@@ -115,7 +153,6 @@ void APFPlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 기존 IMC 등록 코드
     if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
     {
         if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -145,26 +182,27 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::Look);
         EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
         EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnInteract);
+        
+        // [추가된 코드] G키(또는 할당된 키) 입력 시 ThrowGrenade 함수가 호출되도록 바인딩
+        EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ThrowGrenade);
+
+        // [추가된 코드] 무기 교체 인풋 바인딩
+        EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ChangeWeaponInput);
     }
 }
 
-// 상호작용 함수 구현
 void APFPlayerCharacter::OnInteract()
 {
-    // [추가] 죽었을 때는 상호작용 금지
     if (bIsDead) return;
 
-    // 포탈 근처 영역에 서 있다면
     if (TargetPortal)
     {
-        // 포탈을 가동
         TargetPortal->Interact(this);
     }
 }
 
 void APFPlayerCharacter::Move(const FInputActionValue& Value)
 {
-    // 공중에 있거나 착지 애니메이션 중에는 이동 입력을 차단하여 문워크 방지
     if (GetCharacterMovement()->IsFalling()) 
     {
         return; 
@@ -193,5 +231,30 @@ void APFPlayerCharacter::Look(const FInputActionValue& Value)
     {
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
+    }
+}
+
+// 캐릭터에서 무기 교체 키 입력이 들어왔을 때 실행될 로직
+void APFPlayerCharacter::ChangeWeaponInput(const FInputActionValue& Value)
+{
+    if (bIsDead) return;
+
+    if (CombatComponent)
+    {
+       
+        float WeaponIndex = Value.Get<float>();
+        
+        if (WeaponIndex == 1.0f)
+        {
+            CombatComponent->SwitchWeapon(EWeaponType::Pistol);
+        }
+        else if (WeaponIndex == 2.0f)
+        {
+            CombatComponent->SwitchWeapon(EWeaponType::Rifle);
+        }
+        else if (WeaponIndex == 3.0f)
+        {
+            CombatComponent->SwitchWeapon(EWeaponType::Sniper);
+        }
     }
 }
