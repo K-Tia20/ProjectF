@@ -15,3 +15,7 @@ void APFHealingItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 	 UE_LOG(LogTemp, Log, TEXT("체력 %f 회복 완료!"), HealAmount);
 	 Super::OnPickup(PlayerCharacter);
 }
+
+
+
+

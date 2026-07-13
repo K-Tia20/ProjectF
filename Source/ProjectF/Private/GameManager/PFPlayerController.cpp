@@ -247,3 +247,24 @@ void APFPlayerController::HideInteractionPrompt()
 		HUDWidgetInstance->CallFunctionByNameWithArguments(TEXT("HidePrompt"), Ar, nullptr, true);
 	}
 }
+
+
+
+
+void APFPlayerController::ShowHitMarker()
+{
+	if (HUDWidgetInstance == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[HitMarker] HUDWidgetInstance is null")
+		);
+
+		return;
+	}
+
+	FOutputDeviceNull Ar;
+	FString Command = TEXT("PlayHitMarkerAnim");
+
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command,Ar,nullptr,true);
+
+	UE_LOG(LogTemp, Log, TEXT("[HitMarker] PlayHitMarkerAnim called"));
+}
