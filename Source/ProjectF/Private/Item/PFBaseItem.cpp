@@ -5,7 +5,9 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Character/PFPlayerCharacter.h"
-
+#include "Blueprint/UserWidget.h"
+#include "Misc/OutputDeviceDebug.h"
+#include "GameManager/PFPlayerController.h"
 
 APFBaseItem::APFBaseItem()
 {
@@ -43,6 +45,26 @@ void APFBaseItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 
 void APFBaseItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 {
-	Destroy();
+	if (PlayerCharacter)
+	{
+		APlayerController* PlayerController = Cast<APlayerController>(PlayerCharacter->GetController());
+		APFPlayerController* PFPlayerController = Cast<APFPlayerController>(PlayerController);
+		
+		if (PFPlayerController)
+		{
+			UUserWidget* HUDWidgetInstance = PFPlayerController->HUDWidgetInstance;
+			
+			if (HUDWidgetInstance)
+			{
+				FOutputDeviceDebug Ar;
+				
+				FString Command = FString::Printf(TEXT("ShowItemNotification \"%s\" %d"), *ItemDisplayName, ItemAmount);
+				HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+				UE_LOG(LogTemp, Log, TEXT("[HUD] 아이템 획득 알림 전송: %s"), *Command);
+			}
+		}
+		Destroy();
+	}
 }
+
 

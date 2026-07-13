@@ -1,5 +1,6 @@
 #include "Character/PFCombatComponent.h"
 #include "DrawDebugHelpers.h"
+#include "GameManager/PFPlayerController.h"
 #include "Monster/PFMonsterCharacter.h" 
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Character.h"     // [추가] Cast<ACharacter> 및 구조 활용을 위해 필수 인클루드
@@ -24,6 +25,7 @@ void UPFCombatComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    CurrentWeapon = EWeaponType::Pistol;
     // [추가] 게임 시작 시 주인 캐릭터의 메쉬 소켓에 눈속임용 메쉬를 안전하게 부착
     ACharacter* Character = Cast<ACharacter>(GetOwner());
     if (Character && Character->GetMesh() && HandGrenadeMesh)
@@ -69,7 +71,7 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 // 무기 교체 로직 무기마다 사거리 데미지가 다름 
 void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
-    
+
     // 총기락
    
     int32 CurrentLevel = 1; 
@@ -91,17 +93,42 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     }
 
     if (NewWeapon == EWeaponType::Sniper && CurrentLevel < 3)
-    {  
+    {
         UE_LOG(LogTemp, Warning, TEXT("[스나이퍼는 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
-        return; 
-       
+        return;
     }
     
-
-
     // 기존 로직 
     CurrentWeapon = NewWeapon;
+    
+    AActor* Owner = GetOwner();
+    if (Owner == nullptr) return;
 
+    APawn* OwnerPawn = Cast<APawn>(Owner);
+    if (OwnerPawn == nullptr) return;
+
+    APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController());
+    
+    if (PlayerController != nullptr)
+    {
+        // 2. 무기 이름 결정
+        FString NameToShow = TEXT("기본 무기");
+        if (CurrentWeapon == EWeaponType::Rifle)
+        {
+            NameToShow = TEXT("Assault Rifle");
+        }
+        else if (CurrentWeapon == EWeaponType::Pistol)
+        {
+            NameToShow = TEXT("Pistol");
+        }
+        else if (CurrentWeapon == EWeaponType::Sniper)
+        {
+            NameToShow = TEXT("Sniper Rifle");
+        }
+
+        // 3. UI 업데이트 함수 호출
+        PlayerController->UpdateWeaponNameUI(NameToShow);
+    }
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -129,15 +156,23 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 // 찬우님 요청 [추가] #88
 void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
 {
-    
+    UE_LOG(LogTemp, Warning, TEXT("[Combat Debug] AddAmmo 호출됨! 아이템 무기타입: %d, 현재 든 무기타입: %d"), (int32)WeaponType, (int32)CurrentWeapon);
     if (CurrentWeapon == WeaponType)
     {
         
         CurrentAmmo = FMath::Clamp(CurrentAmmo + Amount, 0, MaxAmmo);
-
+        AActor* Owner = GetOwner();
+        if (Owner)
+        {
+            if (APawn* OwnerPawn = Cast<APawn>(Owner))
+            {
+                if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
+                {
+                    PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo);
+                }
+            }
+        }
         UE_LOG(LogTemp, Warning, TEXT("[Combat] 탄약 획득! 현재 무기 탄약: %d / %d"), CurrentAmmo, MaxAmmo);
-        
-        // 나중에 UI에서 총알 정보(남은 총알 갯수) 출력하는 함수 넣어달라하면 여기에서 호출
     }
 }
 
@@ -206,8 +241,19 @@ void UPFCombatComponent::FireWeapon()
     
     CurrentAmmo--;
     UE_LOG(LogTemp, Warning, TEXT("[Combat] 사격! 남은 총알: %d / %d"), CurrentAmmo, MaxAmmo);
-
+    
+    
     AActor* Owner = GetOwner();
+    if (Owner)
+    {
+        if (APawn* OwnerPawn = Cast<APawn>(Owner))
+        {
+            if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
+            {
+                PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo);
+            }
+        }
+    }
     if (!Owner) return;
 
     APawn* OwnerPawn = Cast<APawn>(Owner);
