@@ -10,11 +10,13 @@
 #include "GameManager/PFLevelPortal.h"
 #include "Blueprint/UserWidget.h"
 #include "Misc/OutputDeviceNull.h"
+#include "Item/PFBaseItem.h"
 
 
 APFGameMode::APFGameMode()
 {
 	GameStateClass = APFGameState::StaticClass();
+	OverallDropChance = 0.2f;
 }
 
 
@@ -198,4 +200,80 @@ void APFGameMode::GameOver()
 	}
 }
 
-// dev 최신화
+
+
+void APFGameMode::HandleMonsterDeath(const FVector& SpawnLocation)
+{
+	int32 CurrentLevel = PFGameState->GetCurrentLevel();
+    // 20% 확률
+    float RandRoll = FMath::FRand();
+    
+    if (RandRoll <= OverallDropChance)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ItemDrop] 성공 "));
+        SpawnRandomItem(SpawnLocation, CurrentLevel);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Log, TEXT("[ItemDrop] 실패 "));
+    }
+}
+
+void APFGameMode::SpawnRandomItem(const FVector& SpawnLocation, int32 CurrentLevel)
+{
+    struct FDropCandidate
+    {
+        TSubclassOf<APFBaseItem> ItemClass;
+        float Weight; // 레벨 1에서 RifleAmmoItem 드랍 안되게 하기 위해 가중치 선언
+    };
+
+    TArray<FDropCandidate> ActivePool;
+
+    // 현재 활성화할 아이템
+    if (HealingItemClass) ActivePool.Add({ HealingItemClass, 30.f });
+    if (PistolAmmoClass)  ActivePool.Add({ PistolAmmoClass, 30.f });
+    if (GrenadeItemClass) ActivePool.Add({ GrenadeItemClass, 10.f });
+
+    // 레벨이 2 이상일 때만 라이플 아모 추가
+    if (CurrentLevel >= 2 && RifleAmmoClass)
+    {
+        ActivePool.Add({ RifleAmmoClass, 30.f });
+    }
+	
+    if (ActivePool.Num() == 0) return;
+
+    // 누적 가중치(Total Weight) 계산
+    float TotalWeight = 0.f;
+    for (const auto& Candidate : ActivePool)
+    {
+        TotalWeight += Candidate.Weight;
+    }
+
+    // 4. 랜덤 선택
+    float RandWeight = FMath::FRand() * TotalWeight;
+    TSubclassOf<APFBaseItem> SelectedItemClass = nullptr;
+
+    float CumulativeWeight = 0.f;
+    for (const auto& Candidate : ActivePool)
+    {
+        CumulativeWeight += Candidate.Weight;
+        if (RandWeight <= CumulativeWeight)
+        {
+            SelectedItemClass = Candidate.ItemClass;
+            break;
+        }
+    }
+
+    // 아이템 월드 스폰
+    if (SelectedItemClass)
+    {
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+        // 아이템 스폰 시 바닥에 묻히지 않도록 Z축 설정
+        FVector AdjustedLocation = SpawnLocation + FVector(0.f, 0.f, 30.f);
+
+        GetWorld()->SpawnActor<APFBaseItem>(SelectedItemClass, AdjustedLocation, FRotator::ZeroRotator, SpawnParams);
+        UE_LOG(LogTemp, Warning, TEXT("[ItemDrop] 아이템 스폰 : %s"), *SelectedItemClass->GetName());
+    }
+}

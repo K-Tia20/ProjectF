@@ -240,6 +240,15 @@ void APFMonsterCharacter::Die()
 	{
 		SetLifeSpan(DestroyDelay);
 	}
+	
+	if (GetWorld())
+    {
+    	APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode());
+    	if (GameMode)
+    	{
+    		GameMode->HandleMonsterDeath(GetActorLocation());
+    	}
+    }
 }
 
 void APFMonsterCharacter::ResetAttack()
