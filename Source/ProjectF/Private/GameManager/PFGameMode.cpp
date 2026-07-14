@@ -124,28 +124,14 @@ void APFGameMode::LevelClear()
 {
 	if (!PFGameState) return;
 
-	if (LevelPortalClass)
+	if (LevelPortalInstance)
 	{
-		FVector SpawnLocation = FVector::ZeroVector;
-		FRotator SpawnRotation = FRotator::ZeroRotator;
-
-		if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
-		{
-			SpawnLocation = PlayerPawn->GetActorLocation() + (PlayerPawn->GetActorForwardVector() * 300.0f);
-			SpawnLocation.Z = PlayerPawn->GetActorLocation().Z;
-		}
-
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-		GetWorld()->SpawnActor<APFLevelPortal>(LevelPortalClass, SpawnLocation, SpawnRotation, SpawnParams);
-
-		UE_LOG(LogTemp, Warning, TEXT("웨이브 최종 클리어! 탈출 포탈이 생성되었습니다. [F]키로 상호작용하세요."));
+		LevelPortalInstance->SetPortalActive(true);
+		UE_LOG(LogTemp, Warning, TEXT("웨이브 최종 클리어! 탈출 포탈이 활성화되었습니다. [F]키로 상호작용하세요."));
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("GameMode에 LevelPortalClass(포탈 블루프린트)가 할당되지 않았습니다!"));
+		UE_LOG(LogTemp, Error, TEXT("월드에 배치되어 자동으로 등록된 APFLevelPortal 인스턴스가 없습니다!"));
 	}
 }
 

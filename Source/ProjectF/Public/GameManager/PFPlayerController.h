@@ -67,6 +67,7 @@ public:
 	void ShowInteractionPrompt(const FString& ActionText);
 	void HideInteractionPrompt();
 	void ShowItemNotification(const FString& ItemName, int32 Amount);
+	void ShowKillNotification();
 	void ShowHitMarker();
 	
 };
