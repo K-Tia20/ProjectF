@@ -11,7 +11,8 @@
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 
-//최신2026-07-10
+
+//최신2026-07-13
 APFMonsterCharacter::APFMonsterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -27,6 +28,19 @@ APFMonsterCharacter::APFMonsterCharacter()
 	AttackBox->SetCollisionObjectType(ECC_WorldDynamic);
 	AttackBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	AttackBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	//왼손
+	LeftAttackBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftAttackBox"));
+	LeftAttackBox->SetupAttachment(GetMesh(), TEXT("AttackSocket_L"));
+
+	LeftAttackBox->SetBoxExtent(FVector(30.f, 30.f, 30.f));
+	LeftAttackBox->SetRelativeLocation(FVector::ZeroVector);
+	LeftAttackBox->SetRelativeRotation(FRotator::ZeroRotator);
+
+	LeftAttackBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	LeftAttackBox->SetCollisionObjectType(ECC_WorldDynamic);
+	LeftAttackBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	LeftAttackBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	LeftAttackBox->SetGenerateOverlapEvents(true);
 	
 }
 
@@ -41,6 +55,11 @@ void APFMonsterCharacter::BeginPlay()
 			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 			TEXT("AttackSocket_R")
 		);
+		
+		LeftAttackBox->OnComponentBeginOverlap.AddDynamic(
+		this,
+		&APFMonsterCharacter::OnAttackBoxOverlap
+	);
 
 		AttackBox->SetRelativeLocation(FVector::ZeroVector);
 		AttackBox->SetRelativeRotation(FRotator::ZeroRotator);
@@ -175,6 +194,7 @@ void APFMonsterCharacter::Die()
 	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
 
 	DisableAttackBox();
+	DisableLeftAttackBox();
 
 	// AI 이동 중지
 	if (AController* MyController = GetController())
@@ -354,7 +374,8 @@ void APFMonsterCharacter::StartAttackHit()
 	
 	// 새로운 공격 타격 구간이므로 이전 기록 제거
 	HitActorsThisAttack.Empty();
-
+	
+	DisableLeftAttackBox();
 	EnableAttackBox();
 }
 
@@ -366,6 +387,7 @@ void APFMonsterCharacter::EndAttackHit()
 void APFMonsterCharacter::FinishAttack()
 {
 	DisableAttackBox();
+	DisableLeftAttackBox();
 	
 	HitActorsThisAttack.Empty();
 	
@@ -380,4 +402,50 @@ void APFMonsterCharacter::FinishAttack()
 	bIsAttacking = false;
 		
 	UE_LOG(LogTemp, Warning, TEXT("[Monster] Attack Finished"));
+}
+
+void APFMonsterCharacter::EnableLeftAttackBox()
+{
+	if (!LeftAttackBox)
+	{
+		return;
+	}
+
+	LeftAttackBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	LeftAttackBox->UpdateOverlaps();
+
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Left AttackBox ON"));
+}
+//왼손
+void APFMonsterCharacter::DisableLeftAttackBox()
+{
+	if (!LeftAttackBox ||
+		LeftAttackBox->GetCollisionEnabled() == ECollisionEnabled::NoCollision)
+	{
+		return;
+	}
+
+	LeftAttackBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	UE_LOG(LogTemp, Warning, TEXT("[Monster] Left AttackBox OFF"));
+}
+
+void APFMonsterCharacter::StartLeftAttackHit()
+{
+	if (IsDead || !bIsAttacking)
+	{
+		return;
+	}
+
+	// 오른손 타격 기록을 초기화
+	HitActorsThisAttack.Empty();
+
+	// 안전하게 오른손 박스는 끄고 왼손만 켠다.
+	DisableAttackBox();
+	EnableLeftAttackBox();
+}
+
+void APFMonsterCharacter::EndLeftAttackHit()
+{
+	DisableLeftAttackBox();
 }

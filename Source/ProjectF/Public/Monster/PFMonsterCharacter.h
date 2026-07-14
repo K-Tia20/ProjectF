@@ -81,15 +81,21 @@ public:
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Attack")
-	UBoxComponent* AttackBox = nullptr;
+	UBoxComponent* AttackBox = nullptr;//오른손 or 오리진
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Attack")
+	UBoxComponent* LeftAttackBox = nullptr;//왼손
 
 	FTimerHandle AttackTimerHandle;
 	FTimerHandle AttackBoxTimerHandle;
 
 	void ResetAttack();
-
+	//오른속 or 오리진
 	void EnableAttackBox();
 	void DisableAttackBox();
+	//왼손
+	void EnableLeftAttackBox();
+	void DisableLeftAttackBox();
 
 	UFUNCTION()
 	void OnAttackBoxOverlap(
@@ -113,7 +119,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Monster|Attack")
 	void FinishAttack();
-	
+	//왼손
+	UFUNCTION(BlueprintCallable, Category = "Monster|Attack")
+	void StartLeftAttackHit();
+
+	UFUNCTION(BlueprintCallable, Category = "Monster|Attack")
+	void EndLeftAttackHit();
 
 		
 	// =====================================================
