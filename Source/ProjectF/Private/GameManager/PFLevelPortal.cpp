@@ -33,7 +33,6 @@ void APFLevelPortal::BeginPlay()
 	
 	SetPortalActive(false);
 
-	// 🔥 2. 게임모드에 자기 자신 자동 등록
 	if (APFGameMode* GameMode = Cast<APFGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
 	{
 		GameMode->RegisterLevelPortal(this);
