@@ -7,6 +7,8 @@
 #include "NavigationSystem.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "AI/Navigation/NavigationTypes.h"
+
 
 
 APFBossCharacter::APFBossCharacter()
@@ -30,7 +32,7 @@ APFBossCharacter::APFBossCharacter()
 	RequiredDetectTime = 0.3f;
 
 	// ===== Boss Move =====
-	WalkSpeed = 300.f;
+	WalkSpeed = 650.f;
 	MoveAcceptanceRadius = 80.f;
 
 	// ===== Boss Armor =====
@@ -76,9 +78,28 @@ void APFBossCharacter::BeginPlay()
 
 	BIsUsingPattern = false;
 
-	if (GetCharacterMovement())
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+		// 최고속도 650
+		Movement->MaxWalkSpeed = WalkSpeed;
+
+		/*
+		 * 1초에 약 300씩 속도가 증가한다.
+		 * 최고속도 650까지 약 2초 정도 걸린다.
+		 */
+		Movement->MaxAcceleration = 300.f;
+
+		// 정지할 때의 감속도
+		Movement->BrakingDecelerationWalking = 500.f;
+
+		/*
+		 * AI의 MoveTo도 즉시 최고속도로 이동하지 않고
+		 * CharacterMovement의 가속도를 사용하게 한다.
+		 */
+		if (FNavMovementProperties* NavProperties = Movement->GetNavMovementProperties())
+		{
+			NavProperties->bUseAccelerationForPaths = true;
+		}
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[Boss] BeginPlay / HP: %f / Armor: %f"), CurrentHP, CurrentArmor);
