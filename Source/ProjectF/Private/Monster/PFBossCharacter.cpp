@@ -32,7 +32,7 @@ APFBossCharacter::APFBossCharacter()
 	RequiredDetectTime = 0.3f;
 
 	// ===== Boss Move =====
-	WalkSpeed = 650.f;
+	WalkSpeed = 850.f;
 	MoveAcceptanceRadius = 80.f;
 
 	// ===== Boss Armor =====
@@ -80,17 +80,17 @@ void APFBossCharacter::BeginPlay()
 
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		// 최고속도 650
+		// 최고속도 850
 		Movement->MaxWalkSpeed = WalkSpeed;
 
 		/*
-		 * 1초에 약 300씩 속도가 증가한다.
-		 * 최고속도 650까지 약 2초 정도 걸린다.
+		 * 1초에 약 450씩 속도가 증가한다.
+		 * 
 		 */
-		Movement->MaxAcceleration = 300.f;
+		Movement->MaxAcceleration = 450.f;
 
 		// 정지할 때의 감속도
-		Movement->BrakingDecelerationWalking = 500.f;
+		Movement->BrakingDecelerationWalking = 600.f;
 
 		/*
 		 * AI의 MoveTo도 즉시 최고속도로 이동하지 않고
