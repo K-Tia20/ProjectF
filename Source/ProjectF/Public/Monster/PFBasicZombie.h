@@ -29,6 +29,17 @@ protected:
 	
 	float CurrentDetectTime = 0.f;
 	
+	// 플레이어를 놓친 뒤 기다리는 시간
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Detect")
+	float LostSightGraceTime = 2.f;
+
+	// 현재 플레이어를 놓친 시간
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Detect")
+	float CurrentLostSightTime = 0.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Detect")
+	float DetectInterval = 0.1f;
+	
 	
 	// ===== Move =====
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie")

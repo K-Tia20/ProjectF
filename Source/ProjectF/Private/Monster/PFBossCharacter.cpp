@@ -7,6 +7,8 @@
 #include "NavigationSystem.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "AI/Navigation/NavigationTypes.h"
+
 
 
 APFBossCharacter::APFBossCharacter()
@@ -30,7 +32,7 @@ APFBossCharacter::APFBossCharacter()
 	RequiredDetectTime = 0.3f;
 
 	// ===== Boss Move =====
-	WalkSpeed = 300.f;
+	WalkSpeed = 850.f;
 	MoveAcceptanceRadius = 80.f;
 
 	// ===== Boss Armor =====
@@ -76,9 +78,32 @@ void APFBossCharacter::BeginPlay()
 
 	BIsUsingPattern = false;
 
-	if (GetCharacterMovement())
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+		// 최고속도 850
+		Movement->MaxWalkSpeed = WalkSpeed;
+
+		/*
+		 * 1초에 약 450씩 속도가 증가한다.
+		 * 
+		 */
+		Movement->MaxAcceleration = 450.f;
+
+		// 정지할 때의 감속도
+		Movement->BrakingDecelerationWalking = 600.f;
+
+		/*
+		 * AI의 MoveTo도 즉시 최고속도로 이동하지 않고
+		 * CharacterMovement의 가속도를 사용하게 한다.
+		 */
+		if (FNavMovementProperties* NavProperties = Movement->GetNavMovementProperties())
+		{
+			NavProperties->bUseAccelerationForPaths = true;
+			
+			// 목표 지점 10cm 전부터만 감속
+			NavProperties->bUseFixedBrakingDistanceForPaths = true;
+			NavProperties->FixedPathBrakingDistance = 10.f;
+		}
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[Boss] BeginPlay / HP: %f / Armor: %f"), CurrentHP, CurrentArmor);
@@ -344,7 +369,7 @@ void APFBossCharacter::UpdateBossPhase()
 	}
 
 	// 2페이즈 강화
-	WalkSpeed += 80.f;
+	WalkSpeed += 150.f;
 	AttackCooldown = FMath::Max(0.8f, AttackCooldown * 0.7f);
 	SearchInterval = FMath::Max(1.0f, SearchInterval * 0.7f);
 	RoarSummonCooldown = FMath::Max(5.0f, RoarSummonCooldown * 0.7f);
