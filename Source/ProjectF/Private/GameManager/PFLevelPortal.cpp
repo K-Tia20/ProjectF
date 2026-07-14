@@ -7,6 +7,8 @@
 #include "GameManager/PFGameMode.h"
 #include "Character/PFPlayerCharacter.h"
 #include "GameManager/PFGameInstance.h"
+#include "NiagaraComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 
 APFLevelPortal::APFLevelPortal()
@@ -29,11 +31,19 @@ void APFLevelPortal::BeginPlay()
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &APFLevelPortal::OnOverlapBegin);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &APFLevelPortal::OnOverlapEnd);
 	
+	SetPortalActive(false);
+
+	if (APFGameMode* GameMode = Cast<APFGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
+	{
+		GameMode->RegisterLevelPortal(this);
+	}
 }
 
 
 void APFLevelPortal::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (!bIsPortalActive) return;
+	
 	if (OtherActor)
 	{
 		APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor);
@@ -49,6 +59,8 @@ void APFLevelPortal::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
 
 void APFLevelPortal::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	if (!bIsPortalActive) return;
+	
 	if (OtherActor)
 	{
 		APFPlayerCharacter* PlayerCharacter = Cast<APFPlayerCharacter>(OtherActor);
@@ -66,6 +78,8 @@ void APFLevelPortal::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* O
 
 void APFLevelPortal::Interact(class APFPlayerCharacter* PlayerCharacter)
 {
+	if (!bIsPortalActive) return;
+	
 	if (PlayerCharacter)
 	{
 		if (UPFGameInstance* GameInstance = Cast<UPFGameInstance>(GetGameInstance()))
@@ -80,3 +94,28 @@ void APFLevelPortal::Interact(class APFPlayerCharacter* PlayerCharacter)
 	}
 }
 
+
+
+void APFLevelPortal::SetPortalActive(bool bActive)
+{
+	bIsPortalActive = bActive;
+
+	// 액터 활성화 / 비활성화
+	SetActorHiddenInGame(!bActive);
+
+	// 콜리전 활성화 / 비활성화
+	SetActorEnableCollision(bActive);
+
+	// BP에 추가된 나이아가라 컴포넌트 활성화 / 비활성화
+	if (UNiagaraComponent* PortalEffect = FindComponentByClass<UNiagaraComponent>())
+	{
+		if (bActive)
+		{
+			PortalEffect->Activate(true);
+		}
+		else
+		{
+			PortalEffect->Deactivate();
+		}
+	}
+}

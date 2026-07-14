@@ -51,6 +51,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|DropSettings")
 	float OverallDropChance = 0.2f;
 	
+	void RegisterLevelPortal(class APFLevelPortal* Portal) { LevelPortalInstance = Portal; }
+	
 protected:
 	
 	virtual void BeginPlay() override;
@@ -78,8 +80,6 @@ private:
     
 	UPROPERTY(EditAnywhere, Category = "Wave Data")
 	UDataTable* WaveDataTableAsset;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Rules", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<APFLevelPortal> LevelPortalClass;
     
+	class APFLevelPortal* LevelPortalInstance;
 };

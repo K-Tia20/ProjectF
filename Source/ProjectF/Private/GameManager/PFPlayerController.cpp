@@ -191,6 +191,12 @@ void APFPlayerController::ShowItemNotification(const FString& ItemName, int32 Am
 	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
 }
 
+void APFPlayerController::ShowKillNotification()
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	HUDWidgetInstance->CallFunctionByNameWithArguments(TEXT("PlayKillNotification"),Ar,nullptr,true);
+}
 
 void APFPlayerController::ShowGameOver(bool bIsClear)
 {
