@@ -34,4 +34,11 @@ public:
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 		
 	void Interact(class APFPlayerCharacter* PlayerCharacter);
+	
+	void SetPortalActive(bool bActive);
+	
+private:
+	// 포탈이 활성화 체크
+	bool bIsPortalActive;
+	
 };
