@@ -30,7 +30,7 @@ void APFBasicZombie::BeginPlay()
 		DetectTimerHandle,
 		this,
 		&APFBasicZombie::DetectPlayer,
-		0.5f,
+		DetectInterval,
 		true
 	);
 
@@ -56,7 +56,7 @@ void APFBasicZombie::DetectPlayer()
 		return;
 	}
 
-	constexpr float DetectInterval = 0.5f;
+	
 
 	const float Distance = FVector::Dist(
 		GetActorLocation(),
@@ -90,10 +90,18 @@ void APFBasicZombie::DetectPlayer()
 		);
 	}
 
+	const bool BIsInDetectRange = Distance <= DetectRange;
+	const bool BHasClearLine = BIsInDetectRange && HasLineOfSight(Player);
+	const bool BIsInsideSightCone = IsPlayerInSight(Player);
+
+	/*
+	 * 처음 플레이어를 발견할 때는 시야각 안에 있어야 한다.
+	 * 이미 타겟을 잡은 상태라면 시야각 밖으로 이동해도
+	 * 장애물 없이 직접 보이는 동안에는 타겟을 유지한다.
+	 */
 	const bool BCanSeePlayer =
-		Distance <= DetectRange &&
-		IsPlayerInSight(Player) &&
-		HasLineOfSight(Player);
+		BHasClearLine &&
+		(BHasTarget || BIsInsideSightCone);
 
 
 	// =====================================================
@@ -104,23 +112,30 @@ void APFBasicZombie::DetectPlayer()
 	{
 		// 다시 봤으므로 시야 상실 시간 초기화
 		CurrentLostSightTime = 0.f;
-
-		// 플레이어를 보고 있는 시간 누적
-		CurrentDetectTime += DetectInterval;
-
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[Zombie] Detecting Player: %f"),
-			CurrentDetectTime
-		);
-
-		// 일정 시간 이상 봐야 정식 타겟으로 인식
-		if (CurrentDetectTime < RequiredDetectTime)
+		
+		// 처음 발견하는 경우에만 감지 시간을 누적한다.
+		if (!BHasTarget)
 		{
-			return;
-		}
+			CurrentDetectTime += DetectInterval;
 
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[Zombie] Detecting Player: %f"),
+				CurrentDetectTime
+			);
+			
+			if (CurrentDetectTime < RequiredDetectTime)
+			{
+				return;
+			}
+		}
+		else
+		{
+			// 이미 발견했던 타겟은 다시 감지 시간을 채우지 않는다.
+			CurrentDetectTime = RequiredDetectTime;
+		}
+				
 		const bool BWasHasTarget = BHasTarget;
 
 		TargetActor = Player;
@@ -211,15 +226,7 @@ void APFBasicZombie::DetectPlayer()
 	 * MoveToActor 명령이 남아 있으면
 	 * 벽 너머 플레이어를 계속 추적할 수 있으므로 중단한다.
 	 */
-	if (AAIController* AIController =
-		Cast<AAIController>(GetController()))
-	{
-		AIController->StopMovement();
-	}
-
-	// 실제 플레이어 액터 추적은 잠시 해제
-	TargetActor = nullptr;
-
+	
 	// 공격이 끝난 뒤부터 시야 상실 시간 누적
 	CurrentLostSightTime += DetectInterval;
 
@@ -231,16 +238,20 @@ void APFBasicZombie::DetectPlayer()
 		LostSightGraceTime
 	);
 
-	// 아직 유예 시간이 남아 있으면 기다린다.
+	// 유예 시간 동안에는 TargetActor를 유지하고 계속 추적한다.
+	// 더블 훅 중 플레이어가 시야 밖으로 빠져도 공격 종료 후 따라간다.
 	if (CurrentLostSightTime < LostSightGraceTime)
 	{
+		ChasePlayer();
 		return;
 	}
 
-	// 유예 시간이 끝났으므로 완전히 타겟 상실
-	CurrentLostSightTime = 0.f;
+	// 유예 시간이 끝났으므로 실제 타겟 추적을 중단한다.
+	TargetActor = nullptr;
 	BHasTarget = false;
+	CurrentLostSightTime = 0.f;
 
+	// 마지막으로 실제 확인했던 위치로 이동한다.
 	HandleLostTarget();
 }
 
@@ -320,7 +331,7 @@ void APFBasicZombie::ChasePlayer()
 
 	if (AIController)
 	{
-		AIController->MoveToActor(TargetActor, MoveAcceptanceRadius);
+		AIController->MoveToActor( TargetActor,20.f,false );
 	}
 }
 

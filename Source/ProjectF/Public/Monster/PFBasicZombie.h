@@ -37,6 +37,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Detect")
 	float CurrentLostSightTime = 0.f;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Detect")
+	float DetectInterval = 0.1f;
+	
 	
 	// ===== Move =====
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie")

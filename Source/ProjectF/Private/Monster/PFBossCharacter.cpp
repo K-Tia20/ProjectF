@@ -99,6 +99,10 @@ void APFBossCharacter::BeginPlay()
 		if (FNavMovementProperties* NavProperties = Movement->GetNavMovementProperties())
 		{
 			NavProperties->bUseAccelerationForPaths = true;
+			
+			// 목표 지점 10cm 전부터만 감속
+			NavProperties->bUseFixedBrakingDistanceForPaths = true;
+			NavProperties->FixedPathBrakingDistance = 10.f;
 		}
 	}
 
