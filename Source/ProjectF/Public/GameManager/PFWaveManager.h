@@ -22,6 +22,9 @@ struct FMonsterSpawnInfo
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsBoss = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave Data")
+	FName TargetPortalTag;
 };
 
 USTRUCT(BlueprintType)
