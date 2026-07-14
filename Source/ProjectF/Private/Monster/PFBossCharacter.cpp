@@ -365,7 +365,7 @@ void APFBossCharacter::UpdateBossPhase()
 	}
 
 	// 2페이즈 강화
-	WalkSpeed += 80.f;
+	WalkSpeed += 150.f;
 	AttackCooldown = FMath::Max(0.8f, AttackCooldown * 0.7f);
 	SearchInterval = FMath::Max(1.0f, SearchInterval * 0.7f);
 	RoarSummonCooldown = FMath::Max(5.0f, RoarSummonCooldown * 0.7f);
