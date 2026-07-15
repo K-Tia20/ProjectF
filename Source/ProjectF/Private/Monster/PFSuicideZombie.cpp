@@ -2,6 +2,8 @@
 
 
 #include "Monster/PFSuicideZombie.h"
+#include "AIController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 
 
@@ -40,6 +42,11 @@ void APFSuicideZombie::BeginPlay()
 	
 }
 
+void APFSuicideZombie::Attack()
+{
+	StartExplosion();
+}
+
 void APFSuicideZombie::StartExplosion()
 {
 	if (IsDead || bIsExploding)
@@ -48,6 +55,18 @@ void APFSuicideZombie::StartExplosion()
 	}
 
 	bIsExploding = true;
+	bIsAttacking = true;
+	
+	// 자폭 준비 중에는 이동 정지
+	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		AIController->StopMovement();
+	}
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->DisableMovement();
+	}
 
 	UE_LOG(
 		LogTemp,
@@ -79,3 +98,5 @@ void APFSuicideZombie::Explode()
 		ExplosionRadius
 	);
 }
+
+

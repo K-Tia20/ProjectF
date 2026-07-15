@@ -14,6 +14,8 @@ class PROJECTF_API APFSuicideZombie : public APFBasicZombie
 public:
 	
 	APFSuicideZombie();
+	
+	virtual void Attack() override;
 
 protected:
 	
