@@ -31,7 +31,7 @@ protected:
 	
 	// 폭발이 적용되는 범위
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuicideZombie|Explosion")
-	float ExplosionRadius = 300.f;
+	float ExplosionRadius = 500.f;
 
 	// 플레이어에게 주는 폭발 피해
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuicideZombie|Explosion")
@@ -51,6 +51,8 @@ protected:
 
 	// 폭발 지연용 타이머
 	FTimerHandle ExplosionTimerHandle;
+	
+	
 
 public:
 	
