@@ -56,7 +56,22 @@ void APFGameMode::BeginPlay()
 	
 	if (PFGameState)
 	{
+		FString CurrentMapName = UGameplayStatics::GetCurrentLevelName(this, true);
+       
+		FString LevelNumString = CurrentMapName;
+		LevelNumString.ReplaceInline(TEXT("L_Map"), TEXT(""));
+
+		int32 ActualLevel = 1;
+		if (LevelNumString.IsNumeric())
+		{
+			ActualLevel = FCString::Atoi(*LevelNumString);
+		}
+       
+		PFGameState->SetCurrentLevel(ActualLevel);
+		UE_LOG(LogTemp, Warning, TEXT("[GameMode] 현재 맵 이름: %s -> 파싱된 레벨: %d 로 GameState 동기화 완료!"), *CurrentMapName, ActualLevel);
+
 		GetWorldTimerManager().SetTimer(PFTimerHandle, this, &APFGameMode::TimerCountDown, 0.1f, true);
+       
 		StartWave();
 	}
 }
