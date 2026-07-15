@@ -23,10 +23,12 @@ APFGrenade::APFGrenade()
 	ExplosionSphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("ExplosionSphereComponent"));
 	ExplosionSphereComponent->SetupAttachment(RootComponent);
 	ExplosionSphereComponent->InitSphereRadius(400.0f);
-	ExplosionSphereComponent->SetCollisionProfileName(TEXT("NoCollision"));
+	ExplosionSphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ExplosionSphereComponent->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 
 	ExplosionEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("ExplosionEffect"));
 	ExplosionEffect->SetupAttachment(RootComponent);
+	ExplosionEffect->bAutoActivate = false;
 	
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
 	ProjectileMovement->UpdatedComponent = CollisionComponent;
@@ -41,13 +43,6 @@ APFGrenade::APFGrenade()
 void APFGrenade::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	//나이아가라 이펙트 off(비활성화)
-	if (UNiagaraComponent* GrenadeEffect = FindComponentByClass<UNiagaraComponent>())
-	{
-		GrenadeEffect->Deactivate();
-	}
-
 	// 타이머 설정
 	GetWorldTimerManager().SetTimer(ExplodeTimerHandle, this, &APFGrenade::Explode, FuseTime, false);
 }
@@ -59,9 +54,10 @@ void APFGrenade::Explode()
 	FVector ExplodeLocation = GetActorLocation();
 
 	// 나이아가라 이펙트 on(활성화)
-	if (UNiagaraComponent* GrenadeEffect = FindComponentByClass<UNiagaraComponent>())
+	if (ExplosionEffect)
 	{
-		GrenadeEffect->Activate(true);
+		ExplosionEffect->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		ExplosionEffect->Activate(true);
 	}
 
 	// 청각 효과 (사운드 재생)
@@ -95,8 +91,16 @@ void APFGrenade::Explode()
 	}
 
 	// 이후 처리
-	SetActorHiddenInGame(true);
-	SetActorEnableCollision(false);
+	if (GrenadeMesh)
+	{
+		GrenadeMesh->SetHiddenInGame(true);
+	}
+	
+	if (CollisionComponent)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	
 	if (ProjectileMovement)
 	{
 		ProjectileMovement->StopMovementImmediately();
