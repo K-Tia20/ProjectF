@@ -160,7 +160,7 @@ void APFGameMode::ProceedToNextLevel()
 				LoadingScreen->CallFunctionByNameWithArguments(TEXT("PlayFadeOut"), Ar, nullptr, true);
 			}
 		}
-		FString LevelNameString = FString::Printf(TEXT("L_Stage%d"), NextLevelNum);
+		FString LevelNameString = FString::Printf(TEXT("L_Map%d"), NextLevelNum);
 		FName NextLevelName = FName(*LevelNameString);
 		
 		UGameplayStatics::OpenLevel(GetWorld(), NextLevelName);
@@ -235,7 +235,7 @@ void APFGameMode::SpawnRandomItem(const FVector& SpawnLocation, int32 CurrentLev
         TotalWeight += Candidate.Weight;
     }
 
-    // 4. 랜덤 선택
+    // 랜덤 선택
     float RandWeight = FMath::FRand() * TotalWeight;
     TSubclassOf<APFBaseItem> SelectedItemClass = nullptr;
 
