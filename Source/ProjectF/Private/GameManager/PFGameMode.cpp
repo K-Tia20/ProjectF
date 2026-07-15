@@ -235,7 +235,7 @@ void APFGameMode::SpawnRandomItem(const FVector& SpawnLocation, int32 CurrentLev
         TotalWeight += Candidate.Weight;
     }
 
-    // 4. 랜덤 선택
+    // 랜덤 선택
     float RandWeight = FMath::FRand() * TotalWeight;
     TSubclassOf<APFBaseItem> SelectedItemClass = nullptr;
 
