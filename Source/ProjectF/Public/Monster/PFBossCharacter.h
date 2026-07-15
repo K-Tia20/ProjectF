@@ -27,7 +27,7 @@ protected:
 
 	// 보스 사망 처리
 	virtual void Die() override;
-
+public:
 	// 보스는 방어도 때문에 데미지 계산이 다르다.
 	virtual void TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser = nullptr) override;
 
