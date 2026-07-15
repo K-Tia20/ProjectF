@@ -254,7 +254,7 @@ void APFPlayerCharacter::ChangeWeaponInput(const FInputActionValue& Value)
         }
         else if (WeaponIndex == 3.0f)
         {
-            CombatComponent->SwitchWeapon(EWeaponType::Sniper);
+            CombatComponent->SwitchWeapon(EWeaponType::Sword);
         }
     }
 }
