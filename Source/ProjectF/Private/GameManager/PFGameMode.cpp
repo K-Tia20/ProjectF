@@ -160,7 +160,7 @@ void APFGameMode::ProceedToNextLevel()
 				LoadingScreen->CallFunctionByNameWithArguments(TEXT("PlayFadeOut"), Ar, nullptr, true);
 			}
 		}
-		FString LevelNameString = FString::Printf(TEXT("L_Stage%d"), NextLevelNum);
+		FString LevelNameString = FString::Printf(TEXT("L_Map%d"), NextLevelNum);
 		FName NextLevelName = FName(*LevelNameString);
 		
 		UGameplayStatics::OpenLevel(GetWorld(), NextLevelName);
