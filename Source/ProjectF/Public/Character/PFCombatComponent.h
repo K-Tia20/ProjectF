@@ -10,7 +10,7 @@ enum class EWeaponType : uint8
 {
     Pistol UMETA(DisplayName = "Pistol"),
     Rifle UMETA(DisplayName = "Rifle"),
-    Sniper UMETA(DisplayName = "Sniper")
+    Sword UMETA(DisplayName = "Sword") //저격총에서 검으로 변경
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -38,6 +38,18 @@ public:
     // 무기 스왑 함수
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
     void EquipWeapon(UStaticMesh* WeaponMesh);
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
+    class UAnimMontage* PistolFireMontage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
+    class UAnimMontage* RifleFireMontage;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
+    class UAnimMontage* SwordMontage;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    FName DefaultPistolBoneName = TEXT("weapon_r");
     
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void FireWeapon();
