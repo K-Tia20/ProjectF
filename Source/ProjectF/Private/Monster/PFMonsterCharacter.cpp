@@ -10,6 +10,8 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameManager/PFPlayerController.h"
+
 
 
 //최신2026-07-13
@@ -171,6 +173,7 @@ void APFMonsterCharacter::Attack()
 		AttackCooldown,
 		false
 		);
+	
 }
 
 void APFMonsterCharacter::Die()
@@ -195,7 +198,7 @@ void APFMonsterCharacter::Die()
 
 	DisableAttackBox();
 	DisableLeftAttackBox();
-
+		
 	// AI 이동 중지
 	if (AController* MyController = GetController())
 	{
@@ -269,6 +272,12 @@ void APFMonsterCharacter::Die()
     		GameMode->HandleMonsterDeath(GetActorLocation());
     	}
     }
+	
+	APFPlayerController* PlayerController = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController());
+	if (PlayerController)
+	{
+		PlayerController->ShowKillNotification();
+	}
 }
 
 void APFMonsterCharacter::ResetAttack()
