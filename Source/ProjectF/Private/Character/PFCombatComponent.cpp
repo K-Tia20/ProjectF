@@ -18,7 +18,7 @@ void UPFCombatComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    CurrentWeapon = EWeaponType::Pistol;
+    SwitchWeapon(EWeaponType::Pistol);
 
     ACharacter* Character = Cast<ACharacter>(GetOwner());
     if (Character && Character->GetMesh() && HandGrenadeMesh)
@@ -161,6 +161,11 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         AttackDamage = 100.f;
         AttackRange = 10000.f;
         break;
+    }
+    
+    if (PlayerController != nullptr)
+    {
+        PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo); 
     }
     
     CurrentAmmo = MaxAmmo; 
