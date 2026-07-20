@@ -9,6 +9,7 @@
 /**
  * 
  */
+
 UCLASS()
 class PROJECTF_API APFPlayerController : public APlayerController
 {
@@ -36,9 +37,13 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	class UUserWidget* MainMenuWidgetInstance;
 		
-	//  게임오버 위젯 분리용
+	//  게임오버/클리어 위젯 분리용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	TSubclassOf<class UUserWidget> GameOverWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> GameClearWidgetClass;
+	
 	UPROPERTY(BlueprintReadOnly, Category = "UI")	
 	class UUserWidget* GameOverWidgetInstance;
 	

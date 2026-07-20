@@ -208,21 +208,32 @@ void APFPlayerController::ShowKillNotification()
 
 void APFPlayerController::ShowGameOver(bool bIsClear)
 {
-	if (HUDWidgetInstance) { HUDWidgetInstance->RemoveFromParent(); HUDWidgetInstance = nullptr; }
-	if (GameOverWidgetClass)
+	if (HUDWidgetInstance) 
 	{
-		GameOverWidgetInstance = CreateWidget<UUserWidget>(this, GameOverWidgetClass);
-		if (GameOverWidgetInstance)
-		{
-			GameOverWidgetInstance->AddToViewport(); 
-			bShowMouseCursor = true; 
-			FInputModeUIOnly InputModeData;
-			InputModeData.SetWidgetToFocus(GameOverWidgetInstance->TakeWidget());
-    
-			SetInputMode(InputModeData);
-		}
+	 HUDWidgetInstance->RemoveFromParent(); 
+	 HUDWidgetInstance = nullptr; 
 	}
+	 
+	// bIsClear 조건에 따라 띄울 위젯 클래스 결정 
+	TSubclassOf<UUserWidget> TargetWidgetClass = bIsClear ? GameClearWidgetClass : GameOverWidgetClass;
+	
+	// 위젯 생성 및 화면 표시
+	if (TargetWidgetClass)
+        {
+            GameOverWidgetInstance = CreateWidget<UUserWidget>(this, TargetWidgetClass);
+            if (GameOverWidgetInstance)
+            {
+                GameOverWidgetInstance->AddToViewport(); 
+
+            	// 마우스 커서 활성화 및 UI 입력 모드로 전환
+                bShowMouseCursor = true; 
+                FInputModeUIOnly InputModeData;
+                InputModeData.SetWidgetToFocus(GameOverWidgetInstance->TakeWidget());
+                SetInputMode(InputModeData);
+            }
+        }
 }
+
 
 
 
