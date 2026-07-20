@@ -31,12 +31,25 @@ void APFGameMode::OnMonsterKilled()
 
 	if (PFGameState->GetRemainingMonsters() <= 0)
 	{
-		WaveClear();
+		// 🔥 4레벨 3웨이브(최종 보스)를 잡았는지 확인
+		if (PFGameState->GetCurrentLevel() == 4 && PFGameState->GetCurrentWave() == 3)
+		{
+			APFPlayerController* PlayerController = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController());
+			if (PlayerController)
+			{
+				PlayerController->ShowGameOver(true); // true = 게임 클리어!
+			} // true = 승리/게임클리어!
+		}
+		else
+		{
+			WaveClear(); // 다음 웨이브 진행
+		}
 	}
+	
 }
 
 
-
+//WBP_GameClear
 
 
 
@@ -195,9 +208,9 @@ void APFGameMode::GameOver()
 	GetWorldTimerManager().ClearTimer(PFTimerHandle);
 	UE_LOG(LogTemp, Warning, TEXT("Game Over!"));
 
-	if (APFPlayerController* PC = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController()))
+	if (APFPlayerController* PlayerController = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController()))
 	{
-		PC->ShowGameOver(false);
+		PlayerController->ShowGameOver(false);
 	}
 }
 
