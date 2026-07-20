@@ -66,22 +66,27 @@ float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
 
     float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-    Health -= ActualDamage;
+    Health -= ActualDamage; 
 
+    
+    if (APFPlayerController* PlayerController = Cast<APFPlayerController>(GetController()))
+    {
+        
+        PlayerController->UpdatePlayerHP(Health, MaxHealth); 
+
+        // 3. 피격 블러드 이펙트 호출
+        if (ActualDamage > 0.0f)
+        {
+            PlayerController->ShowBloodEffect(ActualDamage);
+        }
+    }
     if (Health <= 0.0f)
     {
         Health = 0.0f;
         Die(); 
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("현재 체력: %f"), Health);
-
-    if (APFPlayerController* PlayerController = Cast<APFPlayerController>(Controller))
-    {
-        PlayerController->UpdatePlayerHP(Health, MaxHealth); 
-    }
-
-    return ActualDamage;
+    return ActualDamage; 
 }
 
 void APFPlayerCharacter::Die()

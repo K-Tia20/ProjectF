@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/StaticMeshComponent.h"
 #include "weapon/PFGrenade.h"
-#include "GameManager/PFGameState.h" 
+//#include "GameManager/PFGameState.h"  버그 수정시 다시 포함예정
 
 UPFCombatComponent::UPFCombatComponent()
 {
@@ -74,33 +74,35 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 
 void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
-    int32 CurrentLevel = 1; 
+    // 라이플 모션 버그 때문에 일단 주석처리 해놨습니다
+  // int32 CurrentLevel = 1; 
 
-    if (GetWorld())
-    {
-        if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
-        {   
-            CurrentLevel = GameState->GetCurrentLevel(); 
-        }
-    } 
+   
+//   if (GetWorld())
+//    {
+      //  if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
+    //   {   
+     //      CurrentLevel = GameState->GetCurrentLevel(); 
+     //   }
+  //  } 
     
-    if (NewWeapon == EWeaponType::Rifle && CurrentLevel < 2)
-    {  
-        UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
-        return; 
-    }
+ //   if (NewWeapon == EWeaponType::Rifle && CurrentLevel < 2)
+  //  {  
+  //      UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
+  //      return; 
+  //  }
 
-    if (NewWeapon == EWeaponType::Sword && CurrentLevel < 3)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
-        return;
-    }
+   // if (NewWeapon == EWeaponType::Sword && CurrentLevel < 3)
+   // {
+   //     UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
+  //      return;
+  //  }
     
     CurrentWeapon = NewWeapon;
     
     AActor* Owner = GetOwner();
     if (Owner == nullptr) return;
-
+    
     
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
@@ -119,7 +121,7 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
             Character->GetMesh()->HideBoneByName(DefaultPistolBoneName, EPhysBodyOp::PBO_None);
         }
     }
-
+   
     APawn* OwnerPawn = Cast<APawn>(Owner);
     if (OwnerPawn == nullptr) return;
 
@@ -143,7 +145,9 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 
         PlayerController->UpdateWeaponNameUI(NameToShow);
     }
-
+    
+   
+    
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -163,12 +167,12 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         break;
     }
     
+    CurrentAmmo = MaxAmmo; 
+    
     if (PlayerController != nullptr)
     {
         PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo); 
     }
-    
-    CurrentAmmo = MaxAmmo; 
 }
 
 void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
@@ -308,6 +312,12 @@ void UPFCombatComponent::FireWeapon()
           if (Monster)
           {
              Monster->TakeDamageFromMonster(AttackDamage, Owner);
+
+             
+             if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
+             {
+                 PlayerController->ShowHitMarker();
+             }
           }
        }
     }
