@@ -9,6 +9,7 @@
 /**
  * 
  */
+
 UCLASS()
 class PROJECTF_API APFPlayerController : public APlayerController
 {
@@ -36,9 +37,13 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	class UUserWidget* MainMenuWidgetInstance;
 		
-	//  게임오버 위젯 분리용
+	//  게임오버/클리어 위젯 분리용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	TSubclassOf<class UUserWidget> GameOverWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> GameClearWidgetClass;
+	
 	UPROPERTY(BlueprintReadOnly, Category = "UI")	
 	class UUserWidget* GameOverWidgetInstance;
 	
@@ -60,6 +65,7 @@ public:
 	void UpdateAmmoUI(int32 CurrentAmmo, int32 MaxAmmo);
 	void UpdateDashCooldownUI(float DashCooldown);
 	void UpdateGrenadeCountUI(int32 GrenadeCount);
+	void UpdateGrenadeCooldownUI(float GrenadeCooldown);
 	void UpdateWeaponNameUI(const FString& WeaponName);
 
 	//  HUD 안에 들어있는 피격 & 상호작용 이벤트 다이렉트 호출용
