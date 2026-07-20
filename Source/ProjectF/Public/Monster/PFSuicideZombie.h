@@ -6,6 +6,9 @@
 #include "PFBasicZombie.h"
 #include "PFSuicideZombie.generated.h"
 
+class UBoxComponent;
+class UPrimitiveComponent;
+
 UCLASS()
 class PROJECTF_API APFSuicideZombie : public APFBasicZombie
 {
@@ -27,8 +30,6 @@ protected:
 	// 실제 폭발 판정
 	void Explode();
 
-protected:
-	
 	// 폭발이 적용되는 범위
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuicideZombie|Explosion")
 	float ExplosionRadius = 500.f;
@@ -52,9 +53,38 @@ protected:
 	// 폭발 지연용 타이머
 	FTimerHandle ExplosionTimerHandle;
 	
+	// 폭발 범위 디버그 표시 여부
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuicideZombie|Debug")
+	bool bDrawExplosionRange = true;
+	
+	virtual void Die() override;
+
+	// 이미 실제 폭발을 완료했는지
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SuicideZombie|Explosion")
+	bool bHasExploded = false;
+
+	// 죽은 뒤 폭탄 상태로 남아 있는지
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SuicideZombie|Explosion")
+	bool bIsCorpseBomb = false;
+	
+	// 복부 약점
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SuicideZombie|WeakPoint")
+	UBoxComponent* WeakPointCollision = nullptr;
+
+	// 가슴 약점
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SuicideZombie|WeakPoint")
+	UBoxComponent* WeakPointCollision2 = nullptr;
 	
 
 public:
+	
+	// 약점 코어를 맞았을 때 호출
+	UFUNCTION(BlueprintCallable, Category = "SuicideZombie|Explosion")
+	void TriggerWeakPointExplosion();
+	
+	UFUNCTION(BlueprintPure, Category = "SuicideZombie|WeakPoint")
+	bool IsWeakPointComponent(const UPrimitiveComponent* HitComponent) const;
+
 	
 	
 };
