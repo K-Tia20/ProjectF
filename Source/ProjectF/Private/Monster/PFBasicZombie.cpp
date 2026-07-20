@@ -552,3 +552,25 @@ void APFBasicZombie::Die()
 
 	Super::Die();
 }
+
+void APFBasicZombie::OnGetUpFinished()
+{
+	Super::OnGetUpFinished();
+
+	if (IsMonsterDead())
+	{
+		return;
+	}
+
+	// 쓰러지기 전에 이미 플레이어를 추적 중이었다면 즉시 재추적
+	if (BHasTarget && IsValid(TargetActor))
+	{
+		CurrentDetectTime = RequiredDetectTime;
+		ChasePlayer();
+		return;
+	}
+
+	// 타깃 상태가 초기화됐어도 인식 시간을 다시 기다리지 않게 한다.
+	CurrentDetectTime = RequiredDetectTime;
+	DetectPlayer();
+}
