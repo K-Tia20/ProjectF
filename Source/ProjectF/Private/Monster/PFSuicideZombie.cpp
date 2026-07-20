@@ -14,12 +14,13 @@
 #include "GameFramework/DamageType.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/BoxComponent.h"
 
 
 APFSuicideZombie::APFSuicideZombie()
 {
 
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	
 	// ===== Suicide Zombie Status =====
 	MaxHP = 80.f;
@@ -32,6 +33,57 @@ APFSuicideZombie::APFSuicideZombie()
 
 	// 일반 공격은 사용하지 않지만 기본값은 남겨둔다.
 	AttackDamage = 0.f;
+	
+	// =====================================================
+	// Weak Point - Abdomen
+	// =====================================================
+
+	WeakPointCollision =
+		CreateDefaultSubobject<UBoxComponent>(TEXT("WeakPointCollision"));
+
+	WeakPointCollision->SetupAttachment(
+		GetMesh(),
+		TEXT("WeakPointSocket")
+	);
+
+	WeakPointCollision->SetBoxExtent(FVector(20.f, 20.f, 20.f));
+
+	WeakPointCollision->SetCollisionEnabled(
+		ECollisionEnabled::QueryOnly
+	);
+
+	WeakPointCollision->SetCollisionObjectType(ECC_WorldDynamic);
+	WeakPointCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
+	WeakPointCollision->SetCollisionResponseToChannel(
+		ECC_Visibility,
+		ECR_Block
+	);
+
+
+	// =====================================================
+	// Weak Point - Chest
+	// =====================================================
+
+	WeakPointCollision2 =
+		CreateDefaultSubobject<UBoxComponent>(TEXT("WeakPointCollision2"));
+
+	WeakPointCollision2->SetupAttachment(
+		GetMesh(),
+		TEXT("WeakPointSocket2")
+	);
+
+	WeakPointCollision2->SetBoxExtent(FVector(20.f, 20.f, 20.f));
+
+	WeakPointCollision2->SetCollisionEnabled(
+		ECollisionEnabled::QueryOnly
+	);
+
+	WeakPointCollision2->SetCollisionObjectType(ECC_WorldDynamic);
+	WeakPointCollision2->SetCollisionResponseToAllChannels(ECR_Ignore);
+	WeakPointCollision2->SetCollisionResponseToChannel(
+		ECC_Visibility,
+		ECR_Block
+	);
 }
 
 
@@ -40,6 +92,8 @@ void APFSuicideZombie::BeginPlay()
 	Super::BeginPlay();
 	
 	bIsExploding = false;
+	bHasExploded = false;
+	bIsCorpseBomb = false;
 
 	UE_LOG(
 		LogTemp,
@@ -58,7 +112,7 @@ void APFSuicideZombie::Attack()
 
 void APFSuicideZombie::StartExplosion()
 {
-	if (IsDead || bIsExploding)
+	if (IsDead || bIsExploding || bHasExploded)
 	{
 		return;
 	}
@@ -76,6 +130,22 @@ void APFSuicideZombie::StartExplosion()
 	{
 		Movement->DisableMovement();
 	}
+	
+	// 자폭 준비 시간 동안 폭발 범위 표시
+	if (bDrawExplosionRange)
+	{
+		DrawDebugSphere(
+			GetWorld(),
+			GetActorLocation(),
+			ExplosionRadius,
+			32,
+			FColor::Orange,
+			false,
+			ExplosionDelay,
+			0,
+			4.f
+		);
+	}
 
 	UE_LOG(
 		LogTemp,
@@ -83,21 +153,38 @@ void APFSuicideZombie::StartExplosion()
 		TEXT("[SuicideZombie] Explosion Started / Delay: %f"),
 		ExplosionDelay
 	);
-
+	
+	// 디버그 표시를 꺼도 폭발 타이머는 항상 실행
 	GetWorldTimerManager().SetTimer(
 		ExplosionTimerHandle,
 		this,
 		&APFSuicideZombie::Explode,
 		ExplosionDelay,
 		false
-	);
+		);
 }
 
 void APFSuicideZombie::Explode()
 {
-	if (IsDead)
+	if (bHasExploded)
 	{
 		return;
+	}
+
+	bHasExploded = true;
+	bIsExploding = false;
+	bIsCorpseBomb = false;
+	bIsAttacking = false;
+
+	GetWorldTimerManager().ClearTimer(ExplosionTimerHandle);
+	
+	// 살아 있는 상태는 액터 위치,
+	// 래그돌 시체 상태는 현재 메시 위치를 폭발 중심으로 사용
+	FVector ExplosionLocation = GetActorLocation();
+
+	if (IsDead && GetMesh())
+	{
+		ExplosionLocation = GetMesh()->GetComponentLocation();
 	}
 
 	UE_LOG(
@@ -105,21 +192,23 @@ void APFSuicideZombie::Explode()
 		Warning,
 		TEXT("[SuicideZombie] Exploded / Radius: %f"),
 		ExplosionRadius
-	);
-	
-	// 폭발 범위 디버그 표시
-	DrawDebugSphere(
-		GetWorld(),
-		GetActorLocation(),
-		ExplosionRadius,
-		32,
-		FColor::Red,
-		false,
-		2.f,
-		0,
-		5.f
 		);
 	
+	// 폭발 범위 디버그 표시
+	if (bDrawExplosionRange)
+	{
+		DrawDebugSphere(
+			GetWorld(),
+			ExplosionLocation,
+			ExplosionRadius,
+			32,
+			FColor::Red,
+			false,
+			2.f,
+			0,
+			5.f
+			);
+	}
 	// 플레이어와 몬스터는 Character/Pawn이므로 Pawn 채널 탐색
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
 
@@ -136,7 +225,7 @@ void APFSuicideZombie::Explode()
 	const bool bFoundActors =
 		UKismetSystemLibrary::SphereOverlapActors(
 			GetWorld(),
-			GetActorLocation(),
+			ExplosionLocation,
 			ExplosionRadius,
 			ObjectTypes,
 			AActor::StaticClass(),
@@ -248,8 +337,72 @@ void APFSuicideZombie::Explode()
 		}
 	}
 
-	// 폭발 처리가 모두 끝난 뒤 자폭 몬스터 사망
-	Die();
+	// 살아 있는 상태에서 자폭했다면 일반 사망 처리
+	if (!IsDead)
+	{
+		Super::Die();
+	}
+
+	// 이미 죽은 시체 폭탄이든 살아 있던 자폭이든
+	// 폭발 후 잠시 뒤 제거
+	SetLifeSpan(0.2f);
 }
 
+void APFSuicideZombie::Die()
+{
+	if (bHasExploded)
+	{
+		return;
+	}
 
+	// 이미 자폭 준비를 시작한 상태에서 죽으면 즉시 폭발
+	if (bIsExploding)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[SuicideZombie] Killed During Explosion Charge")
+		);
+
+		Explode();
+		return;
+	}
+
+	// 준비 전 죽었다면 우선 래그돌 사망
+	Super::Die();
+
+	// 부모 Die에서 설정한 자동 제거 시간을 취소
+	SetLifeSpan(0.f);
+
+	bIsCorpseBomb = true;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[SuicideZombie] Corpse Bomb Armed")
+	);
+}
+
+void APFSuicideZombie::TriggerWeakPointExplosion()
+{
+	if (bHasExploded)
+	{
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[SuicideZombie] Weak Point Hit")
+	);
+
+	Explode();
+}
+
+bool APFSuicideZombie::IsWeakPointComponent(
+	const UPrimitiveComponent* HitComponent
+) const
+{
+	return HitComponent == WeakPointCollision ||
+		   HitComponent == WeakPointCollision2;
+}
