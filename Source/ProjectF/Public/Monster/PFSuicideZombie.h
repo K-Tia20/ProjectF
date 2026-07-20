@@ -8,6 +8,8 @@
 
 class UBoxComponent;
 class UPrimitiveComponent;
+class UNiagaraSystem;
+class USoundBase;
 
 UCLASS()
 class PROJECTF_API APFSuicideZombie : public APFBasicZombie
@@ -45,6 +47,10 @@ protected:
 	// 자폭을 시작한 뒤 실제로 터질 때까지의 시간
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuicideZombie|Explosion")
 	float ExplosionDelay = 1.5f;
+	
+	// 폭발 순간 생성할 Niagara 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SuicideZombie|Explosion")
+	TObjectPtr<UNiagaraSystem> ExplosionEffect;
 
 	// 이미 자폭을 시작했는지 확인
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SuicideZombie|Explosion")
@@ -74,6 +80,14 @@ protected:
 	// 가슴 약점
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SuicideZombie|WeakPoint")
 	UBoxComponent* WeakPointCollision2 = nullptr;
+	
+	// 자폭 준비 중 재생할 비웃음·심장 고동 소리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SuicideZombie|Sound")
+	TObjectPtr<USoundBase> ChargeSound;
+
+	// 실제 폭발 순간 재생할 소리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SuicideZombie|Sound")
+	TObjectPtr<USoundBase> ExplosionSound;
 	
 
 public:

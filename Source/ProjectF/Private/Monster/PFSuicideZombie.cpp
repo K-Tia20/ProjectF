@@ -16,6 +16,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/BoxComponent.h"
 
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+
 
 APFSuicideZombie::APFSuicideZombie()
 {
@@ -137,6 +140,16 @@ void APFSuicideZombie::StartExplosion()
 		PlayAnimMontage(AttackMontage);
 	}
 	
+	// 비웃음 + 심장 고동
+	if (ChargeSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ChargeSound,
+			GetActorLocation()
+		);
+	}
+	
 	// 자폭 준비 시간 동안 폭발 범위 표시
 	if (bDrawExplosionRange)
 	{
@@ -191,6 +204,31 @@ void APFSuicideZombie::Explode()
 	if (IsDead && GetMesh())
 	{
 		ExplosionLocation = GetMesh()->GetComponentLocation();
+	}
+	
+	if (ExplosionSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ExplosionSound,
+			ExplosionLocation
+		);
+	}
+	
+	// 폭발 Niagara 이펙트 생성
+	if (ExplosionEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		ExplosionEffect,
+		ExplosionLocation,
+		FRotator::ZeroRotator,
+		FVector::OneVector,
+		true,                   // bAutoDestroy
+		true,                   // bAutoActivate
+		ENCPoolMethod::None,
+		true                    // bPreCullCheck
+		);
 	}
 
 	UE_LOG(
