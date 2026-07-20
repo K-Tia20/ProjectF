@@ -167,6 +167,14 @@ void APFPlayerController::UpdateDashCooldownUI(float DashCooldown)
 	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
 }
 
+void APFPlayerController::UpdateGrenadeCooldownUI(float GrenadeCooldown)
+{
+	if (HUDWidgetInstance == nullptr) return;
+	FOutputDeviceNull Ar;
+	FString Command = FString::Printf(TEXT("UpdateGrenadeCooldownUI %f"), GrenadeCooldown);
+	HUDWidgetInstance->CallFunctionByNameWithArguments(*Command, Ar, nullptr, true);
+}
+
 void APFPlayerController::UpdateGrenadeCountUI(int32 GrenadeCount)
 {
 	if (HUDWidgetInstance == nullptr) return;
