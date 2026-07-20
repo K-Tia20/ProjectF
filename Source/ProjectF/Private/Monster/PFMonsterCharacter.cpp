@@ -11,6 +11,7 @@
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameManager/PFPlayerController.h"
+#include "Engine/EngineTypes.h"
 
 
 
@@ -49,6 +50,27 @@ APFMonsterCharacter::APFMonsterCharacter()
 void APFMonsterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		InitialMeshRelativeTransform =
+			MeshComp->GetRelativeTransform();
+
+		InitialMeshCollisionProfileName =
+			MeshComp->GetCollisionProfileName();
+
+		InitialMeshCollisionEnabled =
+			MeshComp->GetCollisionEnabled();
+	}
+
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		InitialCapsuleCollisionProfileName =
+			CapsuleComp->GetCollisionProfileName();
+
+		InitialCapsuleCollisionEnabled =
+			CapsuleComp->GetCollisionEnabled();
+	}
 	
 	if (AttackBox && GetMesh())
 	{
@@ -126,7 +148,7 @@ void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount, AActor* Dama
 
 void APFMonsterCharacter::Attack()
 {
-	if (IsDead || !CanAttack || bIsAttacking)
+	if (IsDead || !CanAttack || bIsAttacking || bIsKnockedDown)
 
 	{
 		return;
@@ -176,6 +198,112 @@ void APFMonsterCharacter::Attack()
 	
 }
 
+void APFMonsterCharacter::ApplyExplosionKnockback(
+	const FVector& ExplosionLocation,
+	float ExplosionRadius,
+	float KnockbackStrength
+)
+{
+	// 죽었거나 보스이거나 이미 쓰러졌으면 중복 처리하지 않는다.
+	if (IsDead || bIsBoss || bIsKnockedDown)
+	{
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	bIsKnockedDown = true;
+	bIsAttacking = false;
+	CanAttack = false;
+
+	HitActorsThisAttack.Empty();
+
+	// 공격 타이머와 공격 판정 정리
+	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
+
+	DisableAttackBox();
+	DisableLeftAttackBox();
+
+	// AI 이동 정지
+	if (AController* MyController = GetController())
+	{
+		MyController->StopMovement();
+	}
+
+	// 캐릭터 이동 정지
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 재생 중인 몽타주 정지
+	if (UAnimInstance* AnimInstance = MeshComp->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(0.05f);
+	}
+
+	// 캡슐은 물리 이동을 방해하지 않도록 잠시 끈다.
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		CapsuleComp->SetCollisionEnabled(
+			ECollisionEnabled::NoCollision
+		);
+	}
+
+	// 살아 있는 상태에서 임시 래그돌 전환
+	MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
+	MeshComp->SetCollisionEnabled(
+		ECollisionEnabled::QueryAndPhysics
+	);
+
+	MeshComp->SetCollisionResponseToChannel(
+		ECC_Pawn,
+		ECR_Ignore
+	);
+
+	MeshComp->SetAllBodiesSimulatePhysics(true);
+	MeshComp->SetSimulatePhysics(true);
+	MeshComp->WakeAllRigidBodies();
+
+	// 폭발 중심을 조금 아래로 내려서
+	// 바깥쪽 + 위쪽 방향으로 날아가게 한다.
+	const FVector ImpulseOrigin =
+		ExplosionLocation - FVector(0.f, 0.f, 100.f);
+
+	MeshComp->AddRadialImpulse(
+		ImpulseOrigin,
+		ExplosionRadius,
+		KnockbackStrength,
+		ERadialImpulseFalloff::RIF_Constant,
+		true
+	);
+	
+	// 일정 시간 후 날아간 위치에서 다시 일어난다.
+	GetWorldTimerManager().ClearTimer(KnockdownTimerHandle);
+
+	GetWorldTimerManager().SetTimer(
+		KnockdownTimerHandle,
+		this,
+		&APFMonsterCharacter::RecoverFromKnockdown,
+		KnockdownDuration,
+		false
+	);
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Monster] Explosion Knockdown / Strength: %f"),
+		KnockbackStrength
+	);
+}
+
 void APFMonsterCharacter::Die()
 {
 	if (IsDead)
@@ -195,6 +323,7 @@ void APFMonsterCharacter::Die()
 	// 공격 관련 타이머 및 판정 정리
 	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
 	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
+	GetWorldTimerManager().ClearTimer(KnockdownTimerHandle);
 
 	DisableAttackBox();
 	DisableLeftAttackBox();
@@ -457,4 +586,137 @@ void APFMonsterCharacter::StartLeftAttackHit()
 void APFMonsterCharacter::EndLeftAttackHit()
 {
 	DisableLeftAttackBox();
+}
+
+void APFMonsterCharacter::RecoverFromKnockdown()
+{
+	if (IsDead || !bIsKnockedDown)
+	{
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
+
+	if (!MeshComp || !CapsuleComp)
+	{
+		return;
+	}
+
+	// 지정한 골반 뼈가 없으면 스켈레톤의 첫 번째 뼈 사용
+	FName FollowBoneName = RagdollRootBoneName;
+
+	if (MeshComp->GetBoneIndex(FollowBoneName) == INDEX_NONE)
+	{
+		FollowBoneName = MeshComp->GetBoneName(0);
+	}
+
+	// 실제로 날아간 래그돌의 현재 위치
+	const FVector RagdollLocation =
+		MeshComp->GetBoneLocation(FollowBoneName);
+
+	// 래그돌 아래의 지면 탐색
+	FHitResult GroundHit;
+
+	const FVector TraceStart =
+		RagdollLocation + FVector(0.f, 0.f, 100.f);
+
+	const FVector TraceEnd =
+		RagdollLocation - FVector(0.f, 0.f, 500.f);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	const bool bHitGround =
+		GetWorld()->LineTraceSingleByChannel(
+			GroundHit,
+			TraceStart,
+			TraceEnd,
+			ECC_Visibility,
+			QueryParams
+		);
+
+	// 캡슐 중심은 바닥보다 반높이만큼 위에 있어야 한다.
+	FVector NewActorLocation = RagdollLocation;
+
+	if (bHitGround)
+	{
+		NewActorLocation =
+			GroundHit.ImpactPoint +
+			FVector(
+				0.f,
+				0.f,
+				CapsuleComp->GetScaledCapsuleHalfHeight()
+			);
+	}
+	else
+	{
+		NewActorLocation.Z +=
+			CapsuleComp->GetScaledCapsuleHalfHeight();
+	}
+
+	// 물리 속도 제거
+	MeshComp->SetPhysicsLinearVelocity(FVector::ZeroVector);
+	MeshComp->SetPhysicsAngularVelocityInDegrees(
+		FVector::ZeroVector
+	);
+
+	// 래그돌 물리 해제
+	MeshComp->SetAllBodiesSimulatePhysics(false);
+	MeshComp->SetSimulatePhysics(false);
+
+	// 액터와 캡슐을 래그돌이 날아간 위치로 이동
+	SetActorLocation(
+		NewActorLocation,
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics
+	);
+
+	// 메시를 캡슐에 다시 부착하고 원래 상대 위치로 복원
+	MeshComp->AttachToComponent(
+		CapsuleComp,
+		FAttachmentTransformRules::KeepRelativeTransform
+	);
+
+	MeshComp->SetRelativeTransform(
+		InitialMeshRelativeTransform
+	);
+
+	// 원래 충돌 설정 복원
+	MeshComp->SetCollisionProfileName(
+		InitialMeshCollisionProfileName
+	);
+
+	MeshComp->SetCollisionEnabled(
+		InitialMeshCollisionEnabled
+	);
+
+	CapsuleComp->SetCollisionProfileName(
+		InitialCapsuleCollisionProfileName
+	);
+
+	CapsuleComp->SetCollisionEnabled(
+		InitialCapsuleCollisionEnabled
+	);
+
+	// 이동 다시 활성화
+	if (UCharacterMovementComponent* Movement =
+		GetCharacterMovement())
+	{
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+
+	bIsKnockedDown = false;
+	bIsAttacking = false;
+	CanAttack = true;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT(
+			"[Monster] Recovered From Knockdown / Location: %s"
+		),
+		*NewActorLocation.ToString()
+	);
 }

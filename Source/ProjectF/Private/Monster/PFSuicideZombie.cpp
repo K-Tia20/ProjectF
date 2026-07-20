@@ -16,6 +16,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/BoxComponent.h"
 
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+
 
 APFSuicideZombie::APFSuicideZombie()
 {
@@ -131,6 +134,22 @@ void APFSuicideZombie::StartExplosion()
 		Movement->DisableMovement();
 	}
 	
+	// 자폭 준비 몽타주 재생
+	if (AttackMontage)
+	{
+		PlayAnimMontage(AttackMontage);
+	}
+	
+	// 비웃음 + 심장 고동
+	if (ChargeSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ChargeSound,
+			GetActorLocation()
+		);
+	}
+	
 	// 자폭 준비 시간 동안 폭발 범위 표시
 	if (bDrawExplosionRange)
 	{
@@ -185,6 +204,31 @@ void APFSuicideZombie::Explode()
 	if (IsDead && GetMesh())
 	{
 		ExplosionLocation = GetMesh()->GetComponentLocation();
+	}
+	
+	if (ExplosionSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ExplosionSound,
+			ExplosionLocation
+		);
+	}
+	
+	// 폭발 Niagara 이펙트 생성
+	if (ExplosionEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		ExplosionEffect,
+		ExplosionLocation,
+		FRotator::ZeroRotator,
+		FVector::OneVector,
+		true,                   // bAutoDestroy
+		true,                   // bAutoActivate
+		ENCPoolMethod::None,
+		true                    // bPreCullCheck
+		);
 	}
 
 	UE_LOG(
@@ -299,6 +343,18 @@ void APFSuicideZombie::Explode()
 					ExplosionDamage,
 					MonsterDamageCauser
 				);
+				
+				// 폭발 피해를 받고도 살아 있는 일반 몬스터만 날린다.
+				// 다른 자폭 몬스터는 우선 넉백에서 제외한다.
+				if (!Monster->IsMonsterDead() &&
+					!Cast<APFSuicideZombie>(Monster))
+				{
+					Monster->ApplyExplosionKnockback(
+						ExplosionLocation,
+						ExplosionRadius,
+						2000.f
+					);
+				}
 
 				UE_LOG(
 					LogTemp,
