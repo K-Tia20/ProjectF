@@ -23,6 +23,18 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    
+    UPROPERTY(EditAnywhere, Category = "Combat")
+    float GrenadeCooldown = 5.0f;
+
+  
+    bool bIsGrenadeOnCooldown = false;
+
+ 
+    FTimerHandle GrenadeCooldownTimerHandle;
+
+    
+    void ResetGrenadeCooldown() { bIsGrenadeOnCooldown = false; };
 
 public: 
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -34,6 +46,7 @@ public:
     //  던지기 전 모션 동안 손에 쥐고 있을 눈속임용 가짜 수류탄 메쉬
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|Grenade")
     UStaticMeshComponent* HandGrenadeMesh;
+    
 
     // 무기 스왑 함수
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")

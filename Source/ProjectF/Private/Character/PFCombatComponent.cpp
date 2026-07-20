@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/StaticMeshComponent.h"
 #include "weapon/PFGrenade.h"
-//#include "GameManager/PFGameState.h"  버그 수정시 다시 포함예정
+//#include "GameManager/PFGameState.h"  
 
 UPFCombatComponent::UPFCombatComponent()
 {
@@ -43,66 +43,71 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
     AActor* Owner = GetOwner();
     if (!Owner) return;
 
-    
     if (CurrentWeaponMesh)
     {
         CurrentWeaponMesh->DestroyComponent();
         CurrentWeaponMesh = nullptr; 
     }
 
-    
     if (!WeaponMesh)
     {
         return; 
     }
     
-
-    
     CurrentWeaponMesh = NewObject<UStaticMeshComponent>(Owner);
     CurrentWeaponMesh->RegisterComponent();
     CurrentWeaponMesh->SetStaticMesh(WeaponMesh);
 
-    
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
     {
-        CurrentWeaponMesh->AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("WeaponSocket"));
+       
+        FName TargetSocketName = TEXT("WeaponSocket"); 
+
+        if (CurrentWeapon == EWeaponType::Sword)
+        {
+            
+            TargetSocketName = TEXT("SwordSocket"); 
+        }
+
+        CurrentWeaponMesh->AttachToComponent(
+            Character->GetMesh(), 
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale, 
+            TargetSocketName
+        );
     }
 }
 
-
-
 void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
-    // 라이플 모션 버그 때문에 일단 주석처리 해놨습니다
-  // int32 CurrentLevel = 1; 
-
-   
-//   if (GetWorld())
-//    {
-      //  if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
-    //   {   
-     //      CurrentLevel = GameState->GetCurrentLevel(); 
-     //   }
-  //  } 
+    // [라이플 모션 버그 예방을 위해 레벨 제한은 임시 주석 처리 유지]
+    /*
+    int32 CurrentLevel = 1; 
+    if (GetWorld())
+    {
+        if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
+        {   
+            CurrentLevel = GameState->GetCurrentLevel(); 
+        }
+    } 
     
- //   if (NewWeapon == EWeaponType::Rifle && CurrentLevel < 2)
-  //  {  
-  //      UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
-  //      return; 
-  //  }
+    if (NewWeapon == EWeaponType::Rifle && CurrentLevel < 2)
+    {  
+        UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
+        return; 
+    }
 
-   // if (NewWeapon == EWeaponType::Sword && CurrentLevel < 3)
-   // {
-   //     UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
-  //      return;
-  //  }
+    if (NewWeapon == EWeaponType::Sword && CurrentLevel < 3)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentLevel);
+        return;
+    }
+    */
     
     CurrentWeapon = NewWeapon;
     
     AActor* Owner = GetOwner();
     if (Owner == nullptr) return;
-    
     
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
@@ -119,6 +124,24 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         else 
         {
             Character->GetMesh()->HideBoneByName(DefaultPistolBoneName, EPhysBodyOp::PBO_None);
+            
+            if (CurrentWeaponMesh)
+            {
+                
+                FName TargetSocketName = TEXT("WeaponSocket");
+                
+                if (CurrentWeapon == EWeaponType::Sword)
+                {
+                    
+                    TargetSocketName = TEXT("SwordSocket");
+                }
+                
+                CurrentWeaponMesh->AttachToComponent(
+                    Character->GetMesh(), 
+                    FAttachmentTransformRules::SnapToTargetIncludingScale, 
+                    TargetSocketName
+                );
+            }
         }
     }
    
@@ -146,8 +169,6 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         PlayerController->UpdateWeaponNameUI(NameToShow);
     }
     
-   
-    
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -163,7 +184,7 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     case EWeaponType::Sword:
         MaxAmmo = 5;
         AttackDamage = 100.f;
-        AttackRange = 10000.f;
+        AttackRange = 150.f; 
         break;
     }
     
@@ -215,8 +236,8 @@ void UPFCombatComponent::ExecuteThrow()
 {
     AActor* Owner = GetOwner();
     ACharacter* Character = Cast<ACharacter>(Owner);
-
-    if (!Character || !GrenadeClass || GrenadeCount <= 0) return;
+    
+    if (!Character || !GrenadeClass || GrenadeCount <= 0 || bIsGrenadeOnCooldown) return;
 
     if (HandGrenadeMesh)
     {
@@ -224,7 +245,7 @@ void UPFCombatComponent::ExecuteThrow()
     }
 
     GrenadeCount--;
-    
+
     FVector SpawnLocation = Character->GetMesh()->GetSocketLocation(HandSocketName); 
     FRotator SpawnRotation = Character->GetControlRotation();
 
@@ -233,6 +254,22 @@ void UPFCombatComponent::ExecuteThrow()
     SpawnParams.Instigator = Character;
 
     GetWorld()->SpawnActor<APFGrenade>(GrenadeClass, SpawnLocation, SpawnRotation, SpawnParams);
+
+    bIsGrenadeOnCooldown = true;
+
+    APFPlayerController* PlayerController = Cast<APFPlayerController>(Character->GetController());
+    if (PlayerController)
+    {
+        PlayerController->UpdateGrenadeCooldownUI(GrenadeCooldown); 
+    }
+
+    GetWorld()->GetTimerManager().SetTimer(
+        GrenadeCooldownTimerHandle, 
+        this, 
+        &UPFCombatComponent::ResetGrenadeCooldown, 
+        GrenadeCooldown, 
+        false
+    );
 }
 
 void UPFCombatComponent::FireWeapon()
@@ -243,9 +280,6 @@ void UPFCombatComponent::FireWeapon()
     
     AActor* Owner = GetOwner();
 
-    // ---------------------------------------------------------
-    // [3번 추가] 무기 타입에 따라 다른 애니메이션 몽타주 재생
-    // ---------------------------------------------------------
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
     {
@@ -311,9 +345,26 @@ void UPFCombatComponent::FireWeapon()
           APFMonsterCharacter* Monster = Cast<APFMonsterCharacter>(HitActor);
           if (Monster)
           {
-             Monster->TakeDamageFromMonster(AttackDamage, Owner);
+           
+             FName HitBoneName = HitResult.BoneName;
 
-             
+            
+             if (HitBoneName == TEXT("head"))
+             {
+                 UE_LOG(LogTemp, Warning, TEXT("🎯 헤드샷 크리티컬 히트!!"));
+                 
+                 
+                 Monster->TakeDamageFromMonster(AttackDamage * 2.0f, Owner);
+
+               
+             }
+             else
+             {
+                
+                 Monster->TakeDamageFromMonster(AttackDamage, Owner);
+             }
+
+            
              if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
              {
                  PlayerController->ShowHitMarker();
@@ -322,6 +373,8 @@ void UPFCombatComponent::FireWeapon()
        }
     }
 }
+
+
 
 void UPFCombatComponent::AddGrenades(int32 Amount)
 {
