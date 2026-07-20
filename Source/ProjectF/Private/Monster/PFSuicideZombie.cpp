@@ -131,6 +131,12 @@ void APFSuicideZombie::StartExplosion()
 		Movement->DisableMovement();
 	}
 	
+	// 자폭 준비 몽타주 재생
+	if (AttackMontage)
+	{
+		PlayAnimMontage(AttackMontage);
+	}
+	
 	// 자폭 준비 시간 동안 폭발 범위 표시
 	if (bDrawExplosionRange)
 	{
