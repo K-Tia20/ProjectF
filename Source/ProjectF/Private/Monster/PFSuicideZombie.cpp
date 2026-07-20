@@ -343,6 +343,18 @@ void APFSuicideZombie::Explode()
 					ExplosionDamage,
 					MonsterDamageCauser
 				);
+				
+				// 폭발 피해를 받고도 살아 있는 일반 몬스터만 날린다.
+				// 다른 자폭 몬스터는 우선 넉백에서 제외한다.
+				if (!Monster->IsMonsterDead() &&
+					!Cast<APFSuicideZombie>(Monster))
+				{
+					Monster->ApplyExplosionKnockback(
+						ExplosionLocation,
+						ExplosionRadius,
+						2000.f
+					);
+				}
 
 				UE_LOG(
 					LogTemp,

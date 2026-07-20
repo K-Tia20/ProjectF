@@ -40,6 +40,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Attack")
 	bool bIsAttacking = false;//공격중 상태 확인 변수
 	
+	// 폭발에 맞았을 때 임시 래그돌과 넉백 적용
+	UFUNCTION(BlueprintCallable, Category = "Monster|Knockdown")
+	void ApplyExplosionKnockback(
+		const FVector& ExplosionLocation,
+		float ExplosionRadius,
+		float KnockbackStrength
+	);
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -72,6 +80,38 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Status")
 	bool CanAttack = true;
+	
+	// 현재 폭발에 쓰러진 상태인지
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Knockdown")
+	bool bIsKnockedDown = false;
+	
+	// 쓰러져 있는 시간
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Knockdown")
+	float KnockdownDuration = 2.5f;
+
+	// 래그돌 위치를 추적할 중심 뼈
+	// Mixamo 계열이면 보통 Hips
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Knockdown")
+	FName RagdollRootBoneName = TEXT("Hips");
+
+	// 넉다운 복구 타이머
+	FTimerHandle KnockdownTimerHandle;
+
+	// 메시의 원래 상대 위치와 회전
+	FTransform InitialMeshRelativeTransform;
+
+	// 원래 충돌 설정
+	FName InitialMeshCollisionProfileName;
+	FName InitialCapsuleCollisionProfileName;
+
+	ECollisionEnabled::Type InitialMeshCollisionEnabled =
+		ECollisionEnabled::QueryOnly;
+
+	ECollisionEnabled::Type InitialCapsuleCollisionEnabled =
+		ECollisionEnabled::QueryAndPhysics;
+
+	// 래그돌에서 복구
+	void RecoverFromKnockdown();
 	
 public:
 
