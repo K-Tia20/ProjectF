@@ -8,6 +8,7 @@
 #include "Character/PFPlayerCharacter.h"
 #include "GameManager/PFGameInstance.h"
 #include "NiagaraComponent.h"
+#include "GameManager/PFPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -50,6 +51,12 @@ void APFLevelPortal::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
 		if (PlayerCharacter)
 		{
 			PlayerCharacter->SetTargetPortal(this);
+			
+			if (APFPlayerController* PlayerController = Cast<APFPlayerController>(PlayerCharacter->GetController()))
+				{
+				PlayerController->ShowInteractionPrompt(TEXT("Portal"));
+				}
+			
 			UE_LOG(LogTemp, Log, TEXT("포탈 반경 진입! F키를 누르세요."));
 		}
 	}
@@ -69,6 +76,10 @@ void APFLevelPortal::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* O
 			if (PlayerCharacter->GetTargetPortal() == this)
 			{
 				PlayerCharacter->SetTargetPortal(nullptr);
+				if (APFPlayerController* PlayerController = Cast<APFPlayerController>(PlayerCharacter->GetController()))
+				{
+					PlayerController->HideInteractionPrompt();
+				}
 				UE_LOG(LogTemp, Log, TEXT("포탈 반경을 벗어남."));
 			}
 		}

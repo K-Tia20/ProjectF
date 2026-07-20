@@ -31,14 +31,14 @@ void APFGameMode::OnMonsterKilled()
 
 	if (PFGameState->GetRemainingMonsters() <= 0)
 	{
-		// 🔥 4레벨 3웨이브(최종 보스)를 잡았는지 확인
+		//  4레벨 3웨이브(최종 보스)를 잡았는지 확인
 		if (PFGameState->GetCurrentLevel() == 4 && PFGameState->GetCurrentWave() == 3)
 		{
 			APFPlayerController* PlayerController = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController());
 			if (PlayerController)
 			{
 				PlayerController->ShowGameOver(true); // true = 게임 클리어!
-			} // true = 승리/게임클리어!
+			}
 		}
 		else
 		{
@@ -48,8 +48,6 @@ void APFGameMode::OnMonsterKilled()
 	
 }
 
-
-//WBP_GameClear
 
 
 
