@@ -10,7 +10,9 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UPFCombatComponent;
-class APFLevelPortal; // 포탈 클래스 전방 선언
+class APFLevelPortal; 
+class UPFDashComponent;
+class UInputAction;
 
 UCLASS()
 class PROJECTF_API APFPlayerCharacter : public ACharacter
@@ -26,25 +28,34 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float MaxHealth = 100.0f;
 
-    //  캐릭터가 죽었는지 체크하는 변수
+    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
     bool bIsDead = false;
 
-    // 캐릭터 사망 시 호출될 함수
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void Die();
 
     virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-    // 힐 아이템 사용시 호출
+   
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void Heal(float HealAmount);
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UPFDashComponent* DashComponent;
+
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* DashAction;
+
+    
+    void OnDashInput(const FInputActionValue& Value);
 
     
     void SetTargetPortal(class APFLevelPortal* Portal) { TargetPortal = Portal; }
     class APFLevelPortal* GetTargetPortal() const { return TargetPortal; }
     
-    // 희진님 추가 요청 +히트마커
+   
     void ShowHitMarker(); 
 
 protected:
