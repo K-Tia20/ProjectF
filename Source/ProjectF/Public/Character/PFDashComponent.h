@@ -30,7 +30,7 @@ protected:
 
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float DashCooldown = 1.0f;
+	float DashCooldown = 3.0f;
 
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VFX")

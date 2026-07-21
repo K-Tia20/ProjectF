@@ -11,7 +11,7 @@
 #include "GameManager/PFLevelPortal.h"      
 #include "GameManager/PFGameMode.h"         
 #include "Animation/AnimInstance.h"
-#include "Character/PFDashComponent.h" // 대쉬 컴포넌트 헤더
+#include "Character/PFDashComponent.h"
 
 APFPlayerCharacter::APFPlayerCharacter()
 {
@@ -36,13 +36,39 @@ APFPlayerCharacter::APFPlayerCharacter()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false; 
 
-    
     CombatComponent = CreateDefaultSubobject<UPFCombatComponent>(TEXT("CombatComponent"));
-
-    
     DashComponent = CreateDefaultSubobject<UPFDashComponent>(TEXT("DashComponent"));
 }
 
+void APFPlayerCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+    {
+        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+        {
+            Subsystem->AddMappingContext(DefaultMappingContext, 0);
+        }
+    }
+
+    if (APFPlayerController* PFController = Cast<APFPlayerController>(Controller))
+    {
+        PFController->UpdatePlayerHP(Health, MaxHealth);
+    }
+
+    
+    if (UPFGameInstance* GameInstance = Cast<UPFGameInstance>(GetGameInstance()))
+    {
+        GameInstance->LoadPlayerState(this);
+    }
+
+    
+    if (CombatComponent)
+    {
+        CombatComponent->SwitchWeapon(EWeaponType::Pistol);
+    }
+}
 
 void APFPlayerCharacter::ThrowGrenade()
 {
@@ -66,7 +92,6 @@ float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
     {
         PlayerController->UpdatePlayerHP(Health, MaxHealth); 
 
-        
         if (ActualDamage > 0.0f)
         {
             PlayerController->ShowBloodEffect(ActualDamage);
@@ -88,21 +113,18 @@ void APFPlayerCharacter::Die()
 
     GetCharacterMovement()->DisableMovement();
 
-    
     if (GetCapsuleComponent())
     {
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
     }
 
-    
     if (GetMesh())
     {
         GetMesh()->SetSimulatePhysics(true);
         GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
     }
 
-   
     if (GetWorld())
     {
         if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
@@ -146,7 +168,6 @@ void APFPlayerCharacter::Fire(const FInputActionValue& Value)
     }
 }
 
-
 void APFPlayerCharacter::OnDashInput(const FInputActionValue& Value)
 {
     if (bIsDead) return;
@@ -154,29 +175,6 @@ void APFPlayerCharacter::OnDashInput(const FInputActionValue& Value)
     if (DashComponent)
     {
         DashComponent->ExecuteDash();
-    }
-}
-
-void APFPlayerCharacter::BeginPlay()
-{
-    Super::BeginPlay();
-
-    if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-    {
-        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-        {
-            Subsystem->AddMappingContext(DefaultMappingContext, 0);
-        }
-    }
-
-    if (APFPlayerController* PFController = Cast<APFPlayerController>(Controller))
-    {
-        PFController->UpdatePlayerHP(Health, MaxHealth);
-    }
-
-    if (UPFGameInstance* GameInstance = Cast<UPFGameInstance>(GetGameInstance()))
-    {
-        GameInstance->LoadPlayerState(this);
     }
 }
 
@@ -190,14 +188,8 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::Look);
         EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
         EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnInteract);
-        
-        
         EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ThrowGrenade);
-
-        
         EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ChangeWeaponInput);
-
-       
         EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnDashInput);
     }
 }
@@ -248,23 +240,26 @@ void APFPlayerCharacter::Look(const FInputActionValue& Value)
 
 void APFPlayerCharacter::ChangeWeaponInput(const FInputActionValue& Value)
 {
-    if (bIsDead) return;
+    if (bIsDead || !CombatComponent) return;
 
-    if (CombatComponent)
+    float WeaponIndex = Value.Get<float>();
+    bool bSuccess = false;
+    
+    if (WeaponIndex == 1.0f)
     {
-        float WeaponIndex = Value.Get<float>();
-        
-        if (WeaponIndex == 1.0f)
-        {
-            CombatComponent->SwitchWeapon(EWeaponType::Pistol);
-        }
-        else if (WeaponIndex == 2.0f)
-        {
-            CombatComponent->SwitchWeapon(EWeaponType::Rifle);
-        }
-        else if (WeaponIndex == 3.0f)
-        {
-            CombatComponent->SwitchWeapon(EWeaponType::Sword);
-        }
+        bSuccess = CombatComponent->SwitchWeapon(EWeaponType::Pistol);
+    }
+    else if (WeaponIndex == 2.0f)
+    {
+        bSuccess = CombatComponent->SwitchWeapon(EWeaponType::Rifle);
+    }
+    else if (WeaponIndex == 3.0f)
+    {
+        bSuccess = CombatComponent->SwitchWeapon(EWeaponType::Sword);
+    }
+
+    if (!bSuccess)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Player] 현재 레벨에서는 해당 무기를 사용할 수 없습니다!"));
     }
 }
