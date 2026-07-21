@@ -53,6 +53,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster|Knockdown")
 	void FinishGetUp();
 	
+	// 총알에 맞은 부위의 물리 피격 반응
+	UFUNCTION(BlueprintCallable, Category = "Monster|HitReaction")
+	void ApplyBulletHitReaction(
+		FName HitBoneName,
+		FVector HitDirection
+	);
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -217,5 +224,31 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	UAnimMontage* GetUpMontage = nullptr;
+	
+	// =====================================================
+	// Bullet Hit Reaction
+	// =====================================================
+
+	// 피격 부위에 가하는 충격 세기
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|HitReaction")
+	float HitReactionImpulse = 80.f;
+
+	// 물리 반응이 유지되는 시간
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|HitReaction")
+	float HitReactionDuration = 0.15f;
+
+	// 애니메이션과 물리를 섞는 비율
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|HitReaction",
+		meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float HitReactionBlendWeight = 0.35f;
+
+	// 현재 물리 반응 중인 본
+	FName CurrentHitReactionBone = NAME_None;
+
+	// 피격 반응 종료 타이머
+	FTimerHandle HitReactionTimerHandle;
+
+	// 피격 반응을 종료하고 애니메이션으로 복귀
+	void FinishBulletHitReaction();
 			
 };

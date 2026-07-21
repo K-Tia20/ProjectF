@@ -8,6 +8,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "AI/Navigation/NavigationTypes.h"
+#include "NavigationSystem.h"
+#include "Monster/PFBasicZombie.h"
 
 
 
@@ -402,14 +404,199 @@ void APFBossCharacter::StartRoarSummonPattern()
 	}
 
 	BIsUsingPattern = true;
+	bIsAttacking = true;
+	CanAttack = false;
 
-	UE_LOG(LogTemp, Warning, TEXT("[Boss] Roar Summon Pattern Start"));
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Roar Summon Pattern Start")
+	);
 
-	// 나중에 여기서 포효 애니메이션 Montage 재생
-	// 좀비 공통 포효음
+	// AI 이동 정지
+	if (AController* BossController = GetController())
+	{
+		BossController->StopMovement();
+	}
+
+	// 캐릭터 이동 정지
+	if (UCharacterMovementComponent* Movement =
+		GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 포효 공통 사운드
 	PlayRoarSound();
+
+	// 포효 소환 몽타주 재생
+	if (RoarSummonMontage)
+	{
+		const float MontageDuration =
+			PlayAnimMontage(RoarSummonMontage);
+
+		if (MontageDuration > 0.f)
+		{
+			return;
+		}
+	}
+
+	// 몽타주가 없거나 재생 실패한 경우 바로 소환
+	HandleRoarSummonNotify();
+}
+
+void APFBossCharacter::SummonMinions()
+{
+	if (IsDead || !SummonMonsterClass || !GetWorld())
+	{
+		return;
+	}
+
+	UNavigationSystemV1* NavSystem =
+		UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[Boss] Navigation System Not Found")
+		);
+
+		return;
+	}
+
+	int32 SpawnedCount = 0;
+
+	// 일부 위치에서 소환에 실패할 수 있으므로
+	// 소환 개수보다 더 많이 위치를 시도한다.
+	const int32 MaxSpawnAttempts = SummonCount * 5;
+
+	for (int32 Attempt = 0;
+		 Attempt < MaxSpawnAttempts &&
+		 SpawnedCount < SummonCount;
+		 ++Attempt)
+	{
+		FNavLocation RandomNavLocation;
+
+		const bool bFoundLocation =
+			NavSystem->GetRandomReachablePointInRadius(
+				GetActorLocation(),
+				SummonRadius,
+				RandomNavLocation
+			);
+
+		if (!bFoundLocation)
+		{
+			continue;
+		}
+
+		FVector MinionSpawnLocation = RandomNavLocation.Location;
+
+		// 땅에 너무 박히는 것을 방지
+		MinionSpawnLocation.Z += 20.f;
+
+		// 보스 쪽을 바라보도록 회전
+		const FRotator SpawnRotation =
+			(GetActorLocation() - MinionSpawnLocation).Rotation();
+
+		FActorSpawnParameters SpawnParams;
+
+		SpawnParams.Owner = this;
+
+		SpawnParams.SpawnCollisionHandlingOverride =
+			ESpawnActorCollisionHandlingMethod::
+			AdjustIfPossibleButDontSpawnIfColliding;
+
+		APFBasicZombie* SpawnedMonster =
+			GetWorld()->SpawnActor<APFBasicZombie>(
+				SummonMonsterClass,
+				MinionSpawnLocation,
+				SpawnRotation,
+				SpawnParams
+			);
+
+		if (!SpawnedMonster)
+		{
+			continue;
+		}
+
+		++SpawnedCount;
+
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Minion Spawned: %s / %d of %d"),
+			*SpawnedMonster->GetName(),
+			SpawnedCount,
+			SummonCount
+		);
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Summon Finished / Spawned: %d of %d"),
+		SpawnedCount,
+		SummonCount
+	);
+}
+
+void APFBossCharacter::EndPattern()
+{
+	BIsUsingPattern = false;
+	bIsAttacking = false;
+	CanAttack = true;
+
+	if (!IsDead)
+	{
+		if (UCharacterMovementComponent* Movement =
+			GetCharacterMovement())
+		{
+			Movement->SetMovementMode(MOVE_Walking);
+		}
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Pattern End")
+	);
 	
-	// 보스 소환 전용 사운드
+}
+
+void APFBossCharacter::ResetRoarSummonCooldown()
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	bCanRoarSummon = true;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Roar Summon Ready")
+	);
+}
+
+void APFBossCharacter::HandleRoarSummonNotify()
+{
+	// 이미 패턴이 끝났거나 죽었다면 중복 소환 방지
+	if (IsDead || !BIsUsingPattern)
+	{
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Roar Summon Notify")
+	);
+
+	// 자폭몹이 나타나는 순간 소환 사운드 재생
 	if (SummonSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
@@ -418,29 +605,9 @@ void APFBossCharacter::StartRoarSummonPattern()
 			GetActorLocation()
 		);
 	}
-	// 지금은 바로 소환 함수 호출 가능
+
 	SummonMinions();
-
 	EndPattern();
-}
-
-void APFBossCharacter::SummonMinions()
-{
-	// 다음 단계에서 구현 예정
-	// 목표:
-	// 1. SummonMonsterClass가 있으면
-	// 2. 보스 주변 또는 지정된 스폰 지점에 부하 생성
-	// 3. 생성된 부하는 보스 위치로 이동
-	// 4. 이동 중 플레이어 발견 시 플레이어 추적
-
-	UE_LOG(LogTemp, Warning, TEXT("[Boss] SummonMinions - Not Implemented Yet"));
-}
-
-void APFBossCharacter::EndPattern()
-{
-	BIsUsingPattern = false;
-
-	UE_LOG(LogTemp, Warning, TEXT("[Boss] Pattern End"));
 }
 
 
@@ -476,4 +643,37 @@ void APFBossCharacter::Die()
 	UE_LOG(LogTemp, Warning, TEXT("[Boss] Die"));
 
 	Super::Die();
+}
+
+// =====================================================
+// Attack pattern
+// =====================================================
+
+void APFBossCharacter::Attack()
+{
+	if (IsDead || BIsUsingPattern)
+	{
+		return;
+	}
+
+	// 소환할 클래스가 지정되어 있고 쿨타임이 준비됐으면 소환
+	if (bCanRoarSummon && SummonMonsterClass)
+	{
+		bCanRoarSummon = false;
+
+		StartRoarSummonPattern();
+
+		GetWorldTimerManager().SetTimer(
+			RoarSummonTimerHandle,
+			this,
+			&APFBossCharacter::ResetRoarSummonCooldown,
+			RoarSummonCooldown,
+			false
+		);
+
+		return;
+	}
+
+	// 소환 쿨타임 중에는 기존 주먹 공격
+	Super::Attack();
 }
