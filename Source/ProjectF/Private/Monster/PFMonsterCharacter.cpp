@@ -620,6 +620,54 @@ void APFMonsterCharacter::RecoverFromKnockdown()
 	// 실제로 날아간 래그돌의 현재 위치
 	const FVector RagdollLocation =
 		MeshComp->GetBoneLocation(FollowBoneName);
+	
+	// =====================================================
+	// 엎드림 / 뒤로 누움 판정
+	// =====================================================
+
+	FName OrientationBoneName = GetUpOrientationBoneName;
+
+	if (MeshComp->GetBoneIndex(OrientationBoneName) == INDEX_NONE)
+	{
+		OrientationBoneName = FollowBoneName;
+	}
+
+	const FTransform OrientationTransform =
+		MeshComp->GetSocketTransform(
+			OrientationBoneName,
+			RTS_World
+		);
+
+	const FVector BodyFacingDirection =
+		OrientationTransform.TransformVectorNoScale(
+			GetUpFacingLocalAxis
+		).GetSafeNormal();
+
+	const float FaceUpDot =
+		FVector::DotProduct(
+			BodyFacingDirection,
+			FVector::UpVector
+		);
+
+	// 몸의 앞쪽이 하늘을 향하면 등을 바닥에 대고 누운 상태
+	const bool bIsLyingOnBack = FaceUpDot >= 0.f;
+
+	// 뒤로 누웠을 때만 Back 몽타주 사용
+	// 그 외에는 기존 Front 몽타주 사용
+	UAnimMontage* SelectedGetUpMontage = GetUpMontage;
+
+	if (bIsLyingOnBack && GetUpBackMontage)
+	{
+		SelectedGetUpMontage = GetUpBackMontage;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Monster] Get Up Type: %s / Dot: %f"),
+		bIsLyingOnBack ? TEXT("Back") : TEXT("Front"),
+		FaceUpDot
+	);
 
 	// 래그돌 아래의 지면 탐색
 	FHitResult GroundHit;
@@ -713,9 +761,10 @@ void APFMonsterCharacter::RecoverFromKnockdown()
 	// 일어나기 몽타주 재생
 	float GetUpDuration = 0.f;
 
-	if (GetUpMontage)
+	if (SelectedGetUpMontage)
 	{
-		GetUpDuration = PlayAnimMontage(GetUpMontage);
+		GetUpDuration =
+			PlayAnimMontage(SelectedGetUpMontage);
 	}
 
 	// 몽타주가 정상적으로 재생됐다면
