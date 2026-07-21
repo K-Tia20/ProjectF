@@ -7,6 +7,8 @@
 #include "Monster/PFBasicZombie.h"
 #include "PFBossCharacter.generated.h"
 
+class UAnimMontage;
+
 UCLASS()
 class PROJECTF_API APFBossCharacter : public APFBasicZombie
 {
@@ -30,6 +32,8 @@ protected:
 public:
 	// 보스는 방어도 때문에 데미지 계산이 다르다.
 	virtual void TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser = nullptr) override;
+	
+	virtual void Attack() override;
 
 
 	// =====================================================
@@ -98,17 +102,33 @@ protected:
 	// =====================================================
 	// Boss Summon Pattern
 	// =====================================================
-
+	
+public:
+	// 포효 몽타주의 소환 노티파이에서 호출
+	UFUNCTION(BlueprintCallable, Category = "Boss|Pattern|Summon")
+	void HandleRoarSummonNotify();
+	
 protected:
 	// 포효 소환 쿨타임
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
 	float RoarSummonCooldown = 60.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
-	int32 SummonCount = 8;
+	int32 SummonCount = 4;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
 	float SummonRadius = 600.f;
+	
+	// 소환 패턴 사용 가능 여부
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Pattern|Summon")
+	bool bCanRoarSummon = true;
+	
+	// 보스 포효 소환 애니메이션
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
+	UAnimMontage* RoarSummonMontage = nullptr;
+
+	// 소환 쿨타임 완료
+	void ResetRoarSummonCooldown();
 
 	// 소환할 부하 몬스터 클래스
 	// BP_SlowZombie, BP_RunZombie, 자폭몬스터 BP 등을 BP에서 지정 가능

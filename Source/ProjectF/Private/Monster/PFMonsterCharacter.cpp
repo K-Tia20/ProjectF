@@ -216,6 +216,9 @@ void APFMonsterCharacter::ApplyExplosionKnockback(
 	{
 		return;
 	}
+	
+	// 부분 피격 물리를 끝내고 전체 래그돌로 전환
+	FinishBulletHitReaction();
 
 	bIsKnockedDown = true;
 	bIsAttacking = false;
@@ -325,6 +328,8 @@ void APFMonsterCharacter::Die()
 	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
 	GetWorldTimerManager().ClearTimer(KnockdownTimerHandle);
 	GetWorldTimerManager().ClearTimer(GetUpTimerHandle);
+	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
+	CurrentHitReactionBone = NAME_None;
 
 	DisableAttackBox();
 	DisableLeftAttackBox();
@@ -768,4 +773,138 @@ void APFMonsterCharacter::FinishGetUp()
 
 void APFMonsterCharacter::OnGetUpFinished()
 {
+	
+}
+
+void APFMonsterCharacter::ApplyBulletHitReaction(
+	FName HitBoneName,
+	FVector HitDirection
+)
+{
+	// 죽었거나 폭발 넉다운 중이면 부분 피격 반응을 실행하지 않음
+	if (IsDead || bIsKnockedDown)
+	{
+		return;
+	}
+
+	// 맞은 본 이름이 없으면 실행할 수 없음
+	if (HitBoneName.IsNone())
+	{
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+
+	if (!MeshComp || !MeshComp->GetPhysicsAsset())
+	{
+		return;
+	}
+
+	// 이전 피격 반응 타이머 초기화
+	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
+
+	// 이전에 다른 부위가 물리 반응 중이었다면 먼저 복구
+	if (!CurrentHitReactionBone.IsNone() &&
+		CurrentHitReactionBone != HitBoneName)
+	{
+		MeshComp->SetAllBodiesBelowPhysicsBlendWeight(
+			CurrentHitReactionBone,
+			0.f,
+			false,
+			true
+		);
+
+		MeshComp->SetAllBodiesBelowSimulatePhysics(
+			CurrentHitReactionBone,
+			false,
+			true
+		);
+	}
+
+	CurrentHitReactionBone = HitBoneName;
+
+	FVector ReactionDirection = HitDirection.GetSafeNormal();
+
+	if (ReactionDirection.IsNearlyZero())
+	{
+		ReactionDirection = -GetActorForwardVector();
+	}
+
+	// 맞은 본과 그 아래 뼈들만 물리 활성화
+	MeshComp->SetAllBodiesBelowSimulatePhysics(
+		HitBoneName,
+		true,
+		true
+	);
+
+	// 애니메이션과 물리를 섞음
+	MeshComp->SetAllBodiesBelowPhysicsBlendWeight(
+		HitBoneName,
+		HitReactionBlendWeight,
+		false,
+		true
+	);
+
+	// 맞은 방향으로 짧은 충격 적용
+	MeshComp->AddImpulse(
+		ReactionDirection * HitReactionImpulse,
+		HitBoneName,
+		true
+	);
+
+	// 잠시 후 다시 애니메이션으로 복귀
+	GetWorldTimerManager().SetTimer(
+		HitReactionTimerHandle,
+		this,
+		&APFMonsterCharacter::FinishBulletHitReaction,
+		HitReactionDuration,
+		false
+	);
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[Monster] Bullet Hit Reaction / Bone: %s"),
+		*HitBoneName.ToString()
+	);
+}
+
+void APFMonsterCharacter::FinishBulletHitReaction()
+{
+	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
+
+	if (CurrentHitReactionBone.IsNone())
+	{
+		return;
+	}
+
+	const FName ReactionBone = CurrentHitReactionBone;
+	CurrentHitReactionBone = NAME_None;
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	// 사망이나 전체 래그돌 상태에서는 물리를 끄면 안 됨
+	if (IsDead || bIsKnockedDown)
+	{
+		return;
+	}
+
+	// 물리 혼합을 제거하고 애니메이션으로 복귀
+	MeshComp->SetAllBodiesBelowPhysicsBlendWeight(
+		ReactionBone,
+		0.f,
+		false,
+		true
+	);
+
+	MeshComp->SetAllBodiesBelowSimulatePhysics(
+		ReactionBone,
+		false,
+		true
+	);
 }
