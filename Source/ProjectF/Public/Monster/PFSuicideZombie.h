@@ -99,6 +99,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SuicideZombie|WeakPoint")
 	bool IsWeakPointComponent(const UPrimitiveComponent* HitComponent) const;
 
-	
+	// 자폭 경고가 시작됐을 때 BP 연출 실행
+	UFUNCTION(BlueprintImplementableEvent, Category = "SuicideZombie|Visual")
+	void OnExplosionWarningStarted();
 	
 };

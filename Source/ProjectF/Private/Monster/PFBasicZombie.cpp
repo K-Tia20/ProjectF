@@ -48,6 +48,13 @@ void APFBasicZombie::DetectPlayer()
 	{
 		return;
 	}
+	
+	// 보스 명령 중에는 일반 플레이어 탐지를 잠시 무시한다.
+	if (bFollowingBossCommand)
+	{
+		UpdateBossCommand();
+		return;
+	}
 
 	AActor* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 
@@ -147,6 +154,9 @@ void APFBasicZombie::DetectPlayer()
 		if (!BWasHasTarget)
 		{
 			PlayDetectSound();
+			
+			// 처음 발견한 순간 자식 클래스에 알린다.
+			OnTargetAcquired(Player);
 		}
 
 		// 다시 찾았으므로 마지막 위치 처리 중단
@@ -189,6 +199,7 @@ void APFBasicZombie::DetectPlayer()
 
 		return;
 	}
+	
 
 
 	// =====================================================
@@ -315,6 +326,10 @@ bool APFBasicZombie::HasLineOfSight(AActor* Player)
 	return BCanSeePlayer;
 }
 
+void APFBasicZombie::OnTargetAcquired(AActor* NewTarget)
+{
+	// 일반 좀비는 추가 행동 없음
+}
 
 // =====================================================
 // Chase / Move
@@ -547,6 +562,11 @@ void APFBasicZombie::Die()
 	BHasTarget = false;
 	BMovingToLastKnownLocation = false;
 	
+	// 보스 명령 상태 정리
+	bFollowingBossCommand = false;
+	BossCommandTarget = nullptr;
+	BossCommandLocation = FVector::ZeroVector;
+	
 	CurrentDetectTime = 0.f;
 	CurrentLostSightTime = 0.f;
 
@@ -573,4 +593,125 @@ void APFBasicZombie::OnGetUpFinished()
 	// 타깃 상태가 초기화됐어도 인식 시간을 다시 기다리지 않게 한다.
 	CurrentDetectTime = RequiredDetectTime;
 	DetectPlayer();
+}
+
+// =====================================================
+// AI로직
+// =====================================================
+
+void APFBasicZombie::ReceiveBossMoveCommand(
+	const FVector& InCommandLocation,
+	AActor* InCommandTarget
+)
+{
+	if (IsDead || !IsValid(InCommandTarget))
+	{
+		return;
+	}
+
+	bFollowingBossCommand = true;
+	BossCommandLocation = InCommandLocation;
+	BossCommandTarget = InCommandTarget;
+
+	// 명령을 수행하는 동안 기존 추적 상태를 잠시 정리한다.
+	TargetActor = nullptr;
+	BHasTarget = false;
+	BMovingToLastKnownLocation = false;
+
+	CurrentDetectTime = 0.f;
+	CurrentLostSightTime = 0.f;
+
+	GetWorldTimerManager().ClearTimer(
+		LastKnownLocationTimerHandle
+	);
+
+	if (AAIController* AIController =
+		Cast<AAIController>(GetController()))
+	{
+		AIController->StopMovement();
+
+		AIController->MoveToLocation(
+			BossCommandLocation,
+			BossCommandAcceptanceRadius
+		);
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Zombie] Boss Command Received / Location: %s"),
+		*BossCommandLocation.ToString()
+	);
+}
+
+void APFBasicZombie::UpdateBossCommand()
+{
+	if (IsDead || !bFollowingBossCommand)
+	{
+		return;
+	}
+
+	// 플레이어가 사라졌다면 명령 취소
+	if (!IsValid(BossCommandTarget))
+	{
+		bFollowingBossCommand = false;
+		BossCommandTarget = nullptr;
+
+		if (AAIController* AIController =
+			Cast<AAIController>(GetController()))
+		{
+			AIController->StopMovement();
+		}
+
+		return;
+	}
+
+	const float DistanceToCommandLocation =
+		FVector::Dist2D(
+			GetActorLocation(),
+			BossCommandLocation
+		);
+
+	const float ReachDistance =
+	BossCommandAcceptanceRadius + 80.f;
+
+	if (DistanceToCommandLocation <= ReachDistance)
+	{
+		FinishBossCommand();
+	}
+}
+
+void APFBasicZombie::FinishBossCommand()
+{
+	if (!bFollowingBossCommand)
+	{
+		return;
+	}
+
+	AActor* CommandTarget = BossCommandTarget;
+
+	bFollowingBossCommand = false;
+	BossCommandTarget = nullptr;
+
+	if (!IsValid(CommandTarget))
+	{
+		return;
+	}
+
+	TargetActor = CommandTarget;
+	BHasTarget = true;
+	BMovingToLastKnownLocation = false;
+
+	LastKnownLocation =
+		CommandTarget->GetActorLocation();
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Zombie] Boss Command Finished / Attack Target: %s"),
+		*CommandTarget->GetName()
+	);
+
+	// 포위 지점에 도착한 뒤 기존 추적 행동 시작
+	ChasePlayer();
 }

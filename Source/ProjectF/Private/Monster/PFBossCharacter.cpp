@@ -8,7 +8,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "AI/Navigation/NavigationTypes.h"
-#include "NavigationSystem.h"
 #include "Monster/PFBasicZombie.h"
 
 
@@ -398,7 +397,7 @@ void APFBossCharacter::UpdateBossPhase()
 
 void APFBossCharacter::StartRoarSummonPattern()
 {
-	if (IsDead || BIsUsingPattern)
+	if (IsDead || BIsUsingPattern || !CanAttack)
 	{
 		return;
 	}
@@ -452,6 +451,9 @@ void APFBossCharacter::SummonMinions()
 	{
 		return;
 	}
+	
+	// 이번 소환 패턴의 몬스터만 새로 저장한다.
+	CurrentSummonedMinions.Reset();
 
 	UNavigationSystemV1* NavSystem =
 		UNavigationSystemV1::GetCurrent(GetWorld());
@@ -521,6 +523,9 @@ void APFBossCharacter::SummonMinions()
 		{
 			continue;
 		}
+		
+		// 보스가 이후 명령을 내릴 수 있도록 저장
+		CurrentSummonedMinions.Add(SpawnedMonster);
 
 		++SpawnedCount;
 
@@ -541,6 +546,9 @@ void APFBossCharacter::SummonMinions()
 		SpawnedCount,
 		SummonCount
 	);
+	// 소환된 몬스터들을 플레이어 주변으로 분산
+	CommandSummonedMinionsToSurround();
+	
 }
 
 void APFBossCharacter::EndPattern()
@@ -566,6 +574,24 @@ void APFBossCharacter::EndPattern()
 	
 }
 
+void APFBossCharacter::OnTargetAcquired(AActor* NewTarget)
+{
+	Super::OnTargetAcquired(NewTarget);
+
+	if (IsDead ||
+		BIsUsingPattern ||
+		!CanAttack)
+	{
+		return;
+	}
+
+	// 소환 쿨타임이 준비된 경우에만 발견 즉시 포효
+	if (bCanRoarSummon && SummonMonsterClass)
+	{
+		Attack();
+	}
+}
+
 void APFBossCharacter::ResetRoarSummonCooldown()
 {
 	if (IsDead)
@@ -580,6 +606,54 @@ void APFBossCharacter::ResetRoarSummonCooldown()
 		Warning,
 		TEXT("[Boss] Roar Summon Ready")
 	);
+	
+	// 쿨타임이 끝나는 순간 소환 시도
+	TryStartReadyRoarSummon();
+	
+}
+
+void APFBossCharacter::TryStartReadyRoarSummon()
+{
+	GetWorldTimerManager().ClearTimer(
+		RoarSummonRetryTimerHandle
+	);
+
+	// 플레이어를 추적 중이 아니거나 소환 준비가 안 됐으면 종료
+	if (IsDead ||
+		!bCanRoarSummon ||
+		!SummonMonsterClass ||
+		!IsValid(TargetActor))
+	{
+		return;
+	}
+
+	/*
+	 * 주먹 공격이나 다른 패턴 도중에는 포효를 끼워 넣지 않는다.
+	 * 0.2초 뒤 다시 확인한다.
+	 */
+	if (BIsUsingPattern ||
+		bIsAttacking ||
+		!CanAttack)
+	{
+		GetWorldTimerManager().SetTimer(
+			RoarSummonRetryTimerHandle,
+			this,
+			&APFBossCharacter::TryStartReadyRoarSummon,
+			0.2f,
+			false
+		);
+
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Use Ready Roar Summon")
+	);
+
+	// 보스 Attack()에서 소환 패턴을 선택
+	Attack();
 }
 
 void APFBossCharacter::HandleRoarSummonNotify()
@@ -610,6 +684,104 @@ void APFBossCharacter::HandleRoarSummonNotify()
 	EndPattern();
 }
 
+void APFBossCharacter::CommandSummonedMinionsToSurround()
+{
+	if (IsDead ||
+		!IsValid(TargetActor) ||
+		CurrentSummonedMinions.IsEmpty())
+	{
+		return;
+	}
+
+	UNavigationSystemV1* NavSystem =
+		UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[Boss] Command Failed - NavSystem Not Found")
+		);
+
+		return;
+	}
+
+	const FVector PlayerLocation =
+		TargetActor->GetActorLocation();
+
+	const int32 MinionCount =
+		CurrentSummonedMinions.Num();
+
+	// 매번 완전히 같은 방향으로 포위하지 않도록 시작 각도를 무작위로 지정
+	const float StartAngle =
+		FMath::FRandRange(0.f, 360.f);
+
+	for (int32 Index = 0; Index < MinionCount; ++Index)
+	{
+		APFBasicZombie* Minion =
+			CurrentSummonedMinions[Index];
+
+		if (!IsValid(Minion) ||
+			Minion->IsMonsterDead())
+		{
+			continue;
+		}
+
+		// 3마리면 120도, 4마리면 90도 간격
+		const float AngleInterval =
+			360.f / static_cast<float>(MinionCount);
+
+		const float CommandAngle =
+			StartAngle + AngleInterval * Index;
+
+		const FVector SurroundDirection =
+			FRotator(
+				0.f,
+				CommandAngle,
+				0.f
+			).Vector();
+
+		const FVector DesiredLocation =
+			PlayerLocation +
+			SurroundDirection * MinionSurroundRadius;
+
+		FNavLocation CommandNavLocation;
+
+		// 계산된 포위 지점을 실제 이동 가능한 NavMesh 위치로 보정
+		const bool bFoundCommandLocation =
+			NavSystem->ProjectPointToNavigation(
+				DesiredLocation,
+				CommandNavLocation,
+				FVector(200.f, 200.f, 300.f)
+			);
+
+		if (!bFoundCommandLocation)
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[Boss] Failed To Find Surround Location / Index: %d"),
+				Index
+			);
+
+			continue;
+		}
+
+		Minion->ReceiveBossMoveCommand(
+			CommandNavLocation.Location,
+			TargetActor
+		);
+
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Surround Command / Minion: %s / Location: %s"),
+			*Minion->GetName(),
+			*CommandNavLocation.Location.ToString()
+		);
+	}
+}
 
 // =====================================================
 // Pattern - Future
@@ -636,12 +808,13 @@ void APFBossCharacter::Die()
 {
 	GetWorldTimerManager().ClearTimer(SearchTimerHandle);
 	GetWorldTimerManager().ClearTimer(RoarSummonTimerHandle);
+	GetWorldTimerManager().ClearTimer(RoarSummonRetryTimerHandle);
 
 	BIsSearching = false;
 	BIsUsingPattern = false;
 
 	UE_LOG(LogTemp, Warning, TEXT("[Boss] Die"));
-
+		
 	Super::Die();
 }
 
@@ -651,7 +824,7 @@ void APFBossCharacter::Die()
 
 void APFBossCharacter::Attack()
 {
-	if (IsDead || BIsUsingPattern)
+	if (IsDead || BIsUsingPattern || bIsAttacking || !CanAttack)
 	{
 		return;
 	}

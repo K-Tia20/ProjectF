@@ -8,6 +8,7 @@
 #include "PFBossCharacter.generated.h"
 
 class UAnimMontage;
+class USoundBase;
 
 UCLASS()
 class PROJECTF_API APFBossCharacter : public APFBasicZombie
@@ -27,14 +28,14 @@ protected:
 	// 보스 피격 반응
 	virtual void OnDamaged(AActor* DamageCauser) override;
 
-	// 보스 사망 처리
-	virtual void Die() override;
+	
 public:
 	// 보스는 방어도 때문에 데미지 계산이 다르다.
 	virtual void TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser = nullptr) override;
 	
 	virtual void Attack() override;
-
+	// 보스 사망 처리
+	virtual void Die() override;
 
 	// =====================================================
 	// Boss Armor
@@ -114,7 +115,7 @@ protected:
 	float RoarSummonCooldown = 60.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
-	int32 SummonCount = 4;
+	int32 SummonCount = 3;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
 	float SummonRadius = 600.f;
@@ -134,9 +135,30 @@ protected:
 	// BP_SlowZombie, BP_RunZombie, 자폭몬스터 BP 등을 BP에서 지정 가능
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Summon")
 	TSubclassOf<APFBasicZombie> SummonMonsterClass;
+	
+	// 이번 소환 패턴으로 생성된 몬스터들
+	// 보스가 이 배열을 통해 각 몬스터에게 서로 다른 위치를 명령한다.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Pattern|Summon")
+	TArray<TObjectPtr<APFBasicZombie>> CurrentSummonedMinions;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Pattern")
 	bool BIsUsingPattern = false;
+	
+	// 플레이어를 처음 발견하면 현재 위치에서 소환 포효
+	virtual void OnTargetAcquired(AActor* NewTarget) override;
+	
+	// 플레이어를 포위할 때 유지할 거리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Command")
+	float MinionSurroundRadius = 400.f;
+
+	// 이번에 소환한 몬스터들에게 포위 명령 전달
+	void CommandSummonedMinionsToSurround();
+	
+	// 소환 쿨타임이 준비됐을 때 보스가 공격 가능해질 때까지 재확인
+	FTimerHandle RoarSummonRetryTimerHandle;
+
+	// 준비된 소환 패턴을 지금 사용할 수 있는지 확인
+	void TryStartReadyRoarSummon();
 
 	FTimerHandle RoarSummonTimerHandle;
 
