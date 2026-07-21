@@ -2,16 +2,16 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Components/CapsuleComponent.h"    // [추가된 코드] UCapsuleComponent 제어를 위해 인클루드 추가
+#include "Components/CapsuleComponent.h"   
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Character/PFCombatComponent.h"    // EWeaponType 사용을 위해 이미 포함되어 있음
+#include "Character/PFCombatComponent.h"    
 #include "GameManager/PFPlayerController.h"
 #include "GameManager/PFGameInstance.h" 
 #include "GameManager/PFLevelPortal.h"      
 #include "GameManager/PFGameMode.h"         
 #include "Animation/AnimInstance.h"
-
+#include "Character/PFDashComponent.h" // 대쉬 컴포넌트 헤더
 
 APFPlayerCharacter::APFPlayerCharacter()
 {
@@ -36,20 +36,14 @@ APFPlayerCharacter::APFPlayerCharacter()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false; 
 
-    // 캐릭터에 컴뱃 컴포넌트 부착
+    
     CombatComponent = CreateDefaultSubobject<UPFCombatComponent>(TEXT("CombatComponent"));
+
+    
+    DashComponent = CreateDefaultSubobject<UPFDashComponent>(TEXT("DashComponent"));
 }
 
-// 히트마커 호출 구현시 주석 제거 
-//void APFPlayerCharacter::ShowHitMarker()
-//{
-   // if (APFPlayerController* PC = Cast<APFPlayerController>(GetController()))
-   // {
-      //  PC->ShowHitMarker();
-    //}
-// }
 
-// 수류탄 던지기 명령 실행 함수
 void APFPlayerCharacter::ThrowGrenade()
 {
     if (bIsDead) return;
@@ -68,13 +62,11 @@ float APFPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
 
     Health -= ActualDamage; 
 
-    
     if (APFPlayerController* PlayerController = Cast<APFPlayerController>(GetController()))
     {
-        
         PlayerController->UpdatePlayerHP(Health, MaxHealth); 
 
-        // 3. 피격 블러드 이펙트 호출
+        
         if (ActualDamage > 0.0f)
         {
             PlayerController->ShowBloodEffect(ActualDamage);
@@ -96,21 +88,21 @@ void APFPlayerCharacter::Die()
 
     GetCharacterMovement()->DisableMovement();
 
-    // [추가된 코드] 사망 시 캡슐 컴포넌트 충돌 제거
+    
     if (GetCapsuleComponent())
     {
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
     }
 
-    // [추가된 코드] 랙돌 물리를 켜서 전신을 바닥에 눕힙니다.
+    
     if (GetMesh())
     {
         GetMesh()->SetSimulatePhysics(true);
         GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
     }
 
-    // 사망 시 현재 월드의 게임모드를 가져와 GameOver() 함수를 호출합니다.
+   
     if (GetWorld())
     {
         if (APFGameMode* GameMode = Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
@@ -154,6 +146,17 @@ void APFPlayerCharacter::Fire(const FInputActionValue& Value)
     }
 }
 
+
+void APFPlayerCharacter::OnDashInput(const FInputActionValue& Value)
+{
+    if (bIsDead) return;
+
+    if (DashComponent)
+    {
+        DashComponent->ExecuteDash();
+    }
+}
+
 void APFPlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
@@ -188,11 +191,14 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
         EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnInteract);
         
-        // [추가된 코드] G키(또는 할당된 키) 입력 시 ThrowGrenade 함수가 호출되도록 바인딩
+        
         EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ThrowGrenade);
 
-        // [추가된 코드] 무기 교체 인풋 바인딩
+        
         EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ChangeWeaponInput);
+
+       
+        EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnDashInput);
     }
 }
 
@@ -239,14 +245,13 @@ void APFPlayerCharacter::Look(const FInputActionValue& Value)
     }
 }
 
-// 캐릭터에서 무기 교체 키 입력이 들어왔을 때 실행될 로직
+
 void APFPlayerCharacter::ChangeWeaponInput(const FInputActionValue& Value)
 {
     if (bIsDead) return;
 
     if (CombatComponent)
     {
-       
         float WeaponIndex = Value.Get<float>();
         
         if (WeaponIndex == 1.0f)
