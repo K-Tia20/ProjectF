@@ -324,6 +324,7 @@ void APFMonsterCharacter::Die()
 	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
 	GetWorldTimerManager().ClearTimer(AttackBoxTimerHandle);
 	GetWorldTimerManager().ClearTimer(KnockdownTimerHandle);
+	GetWorldTimerManager().ClearTimer(GetUpTimerHandle);
 
 	DisableAttackBox();
 	DisableLeftAttackBox();
@@ -700,16 +701,32 @@ void APFMonsterCharacter::RecoverFromKnockdown()
 		InitialCapsuleCollisionEnabled
 	);
 
-	// 이동 다시 활성화
-	if (UCharacterMovementComponent* Movement =
-		GetCharacterMovement())
+	// 일어나는 동안에는 이동과 공격을 계속 막는다.
+	bIsAttacking = true;
+	CanAttack = false;
+
+	// 일어나기 몽타주 재생
+	float GetUpDuration = 0.f;
+
+	if (GetUpMontage)
 	{
-		Movement->SetMovementMode(MOVE_Walking);
+		GetUpDuration = PlayAnimMontage(GetUpMontage);
 	}
 
-	bIsKnockedDown = false;
-	bIsAttacking = false;
-	CanAttack = true;
+	// 몽타주가 정상적으로 재생됐다면
+	// 재생 시간이 끝난 뒤 이동과 공격을 다시 활성화한다.
+	if (GetUpDuration <= 0.f)
+	{
+		// 몽타주가 없거나 재생 실패했을 때만 바로 복구
+		FinishGetUp();
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Monster] Get Up Started / Duration: %f"),
+		GetUpDuration
+	);
 
 	UE_LOG(
 		LogTemp,
@@ -719,4 +736,36 @@ void APFMonsterCharacter::RecoverFromKnockdown()
 		),
 		*NewActorLocation.ToString()
 	);
+}
+
+void APFMonsterCharacter::FinishGetUp()
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	// 캐릭터 이동 다시 활성화
+	if (UCharacterMovementComponent* Movement =
+		GetCharacterMovement())
+	{
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+
+	bIsKnockedDown = false;
+	bIsAttacking = false;
+	CanAttack = true;
+	
+	// 일반 좀비가 즉시 추적을 재개하도록 알림
+	OnGetUpFinished();
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Monster] Get Up Finished")
+	);
+}
+
+void APFMonsterCharacter::OnGetUpFinished()
+{
 }

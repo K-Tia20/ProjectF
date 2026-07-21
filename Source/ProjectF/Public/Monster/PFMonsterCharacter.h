@@ -48,12 +48,20 @@ public:
 		float KnockbackStrength
 	);
 	
+	FTimerHandle GetUpTimerHandle;
+
+	UFUNCTION(BlueprintCallable, Category = "Monster|Knockdown")
+	void FinishGetUp();
+	
 protected:
 	virtual void BeginPlay() override;
 
 	// 데미지를 받은 뒤 자식 몬스터가 추가 반응을 할 수 있게 만든 함수
 	// 예: 좀비는 피격 시 공격자를 즉시 추적
 	virtual void OnDamaged(AActor* DamageCauser);
+	
+	// 일어나기가 완료된 뒤 자식 몬스터가 추가 행동
+	virtual void OnGetUpFinished();
 
 
 	// =====================================================
@@ -206,5 +214,8 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	UAnimMontage* AttackMontage = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	UAnimMontage* GetUpMontage = nullptr;
 			
 };

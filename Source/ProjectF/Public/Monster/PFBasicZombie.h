@@ -59,6 +59,8 @@ protected:
 	UPROPERTY()
 	FVector LastKnownLocation;
 	
+	virtual void OnGetUpFinished() override;
+	
 	// 일반 좀비는 true, 보스는 false
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie")
 	bool BReturnToSpawnLocation = true;
