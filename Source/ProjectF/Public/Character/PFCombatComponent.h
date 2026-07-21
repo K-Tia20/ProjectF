@@ -47,6 +47,8 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|Grenade")
     UStaticMeshComponent* HandGrenadeMesh;
     
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void ExecuteMeleeHitCheck();
 
     // 무기 스왑 함수
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
