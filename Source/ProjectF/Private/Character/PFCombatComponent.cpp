@@ -8,6 +8,7 @@
 #include "weapon/PFGrenade.h"
 #include "TimerManager.h" 
 #include "Engine/OverlapResult.h"
+#include "Monster/PFSuicideZombie.h"
 //#include "GameManager/PFGameState.h"  
 
 UPFCombatComponent::UPFCombatComponent()
@@ -63,7 +64,6 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
     {
-       
         FName TargetSocketName = TEXT("WeaponSocket"); 
 
         if (CurrentWeapon == EWeaponType::Sword)
@@ -79,12 +79,51 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
     }
 }
 
-void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
+bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
+    /*
+    int32 CurrentWave = 1; 
+    if (GetWorld())
+    {
+        if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
+        {   
+            CurrentWave = GameState->GetCurrentLevel(); 
+        }
+    } 
+    
+    
+    if (NewWeapon == EWeaponType::Rifle && CurrentWave < 2)
+    {  
+        UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentWave);
+        return false; 
+    }
+
+    if (NewWeapon == EWeaponType::Sword && CurrentWave < 3)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentWave);
+        return false;
+    }
+    */
+    
+    switch (CurrentWeapon)
+    {
+    case EWeaponType::Pistol:
+        PistolCurrentAmmo = CurrentAmmo;
+        break;
+    case EWeaponType::Rifle:
+        RifleCurrentAmmo = CurrentAmmo;
+        break;
+    case EWeaponType::Sword:
+        SwordCurrentAmmo = CurrentAmmo;
+        break;
+    }
+    
+   
     CurrentWeapon = NewWeapon;
     
     AActor* Owner = GetOwner();
-    if (Owner == nullptr) return;
+    if (Owner == nullptr) return false;
+    
     
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
@@ -121,9 +160,8 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     }
    
     APawn* OwnerPawn = Cast<APawn>(Owner);
-    if (OwnerPawn == nullptr) return;
-
-    APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController());
+    APFPlayerController* PlayerController = OwnerPawn ? Cast<APFPlayerController>(OwnerPawn->GetController()) : nullptr;
+    
     
     if (PlayerController != nullptr)
     {
@@ -144,31 +182,39 @@ void UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         PlayerController->UpdateWeaponNameUI(NameToShow);
     }
     
+    
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
         MaxAmmo = 15;
+        CurrentAmmo = PistolCurrentAmmo;
         AttackDamage = 15.f;
         AttackRange = 3000.f;
+        FireRate = 0.25f;
         break;
     case EWeaponType::Rifle:
         MaxAmmo = 30;
+        CurrentAmmo = RifleCurrentAmmo;
         AttackDamage = 25.f;
         AttackRange = 5000.f;
+        FireRate = 0.1f;
         break;
     case EWeaponType::Sword:
         MaxAmmo = 5;
+        CurrentAmmo = SwordCurrentAmmo;
         AttackDamage = 100.f;
-        AttackRange = 150.f; // 검 사거리는 이제 C++ SphereTrace에서 사용할 거라 그대로 둬도 됨
+        AttackRange = 150.f; 
+        FireRate = 1.0f;
         break;
     }
     
-    CurrentAmmo = MaxAmmo; 
     
     if (PlayerController != nullptr)
     {
         PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo); 
     }
+
+    return true; 
 }
 
 void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
@@ -250,12 +296,24 @@ void UPFCombatComponent::ExecuteThrow()
 
 void UPFCombatComponent::FireWeapon()
 {
-    if (CurrentAmmo <= 0) return;
+    
+    if (!bCanFire || CurrentAmmo <= 0) return;
+    
     
     CurrentAmmo--;
-    
+    bCanFire = false;
+
+    GetWorld()->GetTimerManager().SetTimer(
+        FireTimerHandle,
+        this,
+        &UPFCombatComponent::ResetFire,
+        FireRate, 
+        false
+    );
+
     AActor* Owner = GetOwner();
 
+    
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
     {
@@ -277,6 +335,7 @@ void UPFCombatComponent::FireWeapon()
         }
     }
 
+   
     if (Owner)
     {
         if (APawn* OwnerPawn = Cast<APawn>(Owner))
@@ -288,16 +347,11 @@ void UPFCombatComponent::FireWeapon()
         }
     }
 
-    // 현재 무기가 '검'일 경우, 즉시 나가는 라인트레이스(총기용)를 무시합니다
+    
     if (CurrentWeapon == EWeaponType::Sword)
     {
-        // 검 판정은 애니메이션 노티파이가 별도의 함수를 호출하여 처리합니다.
         return; 
     }
-
-    // ==========================================
-    //  총기류 전용 라인트레이스
-    // ==========================================
 
     if (!Owner) return;
 
@@ -326,50 +380,68 @@ void UPFCombatComponent::FireWeapon()
 
     if (bHit)
     {
-       AActor* HitActor = HitResult.GetActor();
-       if (HitActor)
-       {
-          APFMonsterCharacter* Monster = Cast<APFMonsterCharacter>(HitActor);
-          if (Monster)
-          {
-             FName HitBoneName = HitResult.BoneName;
+        AActor* HitActor = HitResult.GetActor();
+        if (HitActor)
+        {
+            APFMonsterCharacter* Monster = Cast<APFMonsterCharacter>(HitActor);
+            if (Monster)
+            {
+                FName HitBoneName = HitResult.BoneName;
+                UPrimitiveComponent* HitComponent = HitResult.GetComponent();
+                bool bWeakPointHit = false;
 
-             if (HitBoneName == TEXT("head"))
-             {
-                 UE_LOG(LogTemp, Warning, TEXT("🎯 헤드샷 크리티컬 히트!!"));
-                 Monster->TakeDamageFromMonster(AttackDamage * 2.0f, Owner);
-             }
-             else
-             {
-                 Monster->TakeDamageFromMonster(AttackDamage, Owner);
-             }
+                
+                if (APFSuicideZombie* SuicideZombie = Cast<APFSuicideZombie>(Monster))
+                {
+                    if (SuicideZombie->IsWeakPointComponent(HitComponent))
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("자폭 좀비 약점 명중"));
+                        SuicideZombie->TriggerWeakPointExplosion(); 
+                        bWeakPointHit = true; 
+                    }
+                }
 
-             if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
-             {
-                 PlayerController->ShowHitMarker();
-             }
-          }
-       }
+                // 약점이 아닌 경우 일반/헤드샷 데미지 처리
+                if (!bWeakPointHit) 
+                {
+                    if (HitBoneName == TEXT("head"))
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("🎯 헤드샷 크리티컬 히트!!"));
+                        Monster->TakeDamageFromMonster(AttackDamage * 2.0f, Owner);
+                    }
+                    else
+                    {
+                        Monster->TakeDamageFromMonster(AttackDamage, Owner);
+                    }
+                }
+
+                if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
+                {
+                    PlayerController->ShowHitMarker();
+                }
+            }
+        }
     }
 }
 
+
+void UPFCombatComponent::ResetFire()
+{
+    bCanFire = true;
+}
 
 void UPFCombatComponent::ExecuteMeleeHitCheck()
 {
     AActor* Owner = GetOwner();
     if (!Owner) return;
 
-    
     FVector StartLocation = Owner->GetActorLocation() + (Owner->GetActorForwardVector() * 100.f); 
-
-    
     float AttackRadius = 150.f; 
 
     TArray<FOverlapResult> OverlapResults;
     FCollisionQueryParams CollisionParams;
     CollisionParams.AddIgnoredActor(Owner); 
 
-    
     bool bHit = GetWorld()->OverlapMultiByChannel(
         OverlapResults,
         StartLocation,
@@ -379,31 +451,23 @@ void UPFCombatComponent::ExecuteMeleeHitCheck()
         CollisionParams
     );
 
-    //디버깅용 (테스트끝나면지우기)
-    DrawDebugSphere(GetWorld(), StartLocation, AttackRadius, 12, FColor::Green, false, 2.f);
-
     if (bHit)
     {
-        
         TArray<AActor*> HitActors;
 
         for (const FOverlapResult& Overlap : OverlapResults)
         {
             AActor* HitActor = Overlap.GetActor();
             
-            
             if (HitActor && !HitActors.Contains(HitActor))
             {
                 APFMonsterCharacter* Monster = Cast<APFMonsterCharacter>(HitActor);
                 if (Monster)
                 {
-                    
                     Monster->TakeDamageFromMonster(AttackDamage, Owner);
-                    
-                    
                     HitActors.Add(HitActor);
                     
-                    UE_LOG(LogTemp, Warning, TEXT("⚔️ 광역 베기 적중: %s"), *HitActor->GetName());
+                    UE_LOG(LogTemp, Warning, TEXT("광역 베기 적중: %s"), *HitActor->GetName());
                 }
             }
         }
