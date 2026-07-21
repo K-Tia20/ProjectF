@@ -222,8 +222,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	UAnimMontage* AttackMontage = nullptr;
 	
+	// 엎드린 상태에서 일어나는 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	UAnimMontage* GetUpMontage = nullptr;
+			
+	// 등을 바닥에 대고 누운 상태에서 일어나는 몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	UAnimMontage* GetUpBackMontage = nullptr;
+
+	// 앞뒤 자세를 확인할 가슴 본
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	FName GetUpOrientationBoneName = TEXT("Spine2");
+
+	// 해당 본에서 몸의 앞쪽을 나타내는 로컬 방향
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	FVector GetUpFacingLocalAxis = FVector::ForwardVector;
 	
 	// =====================================================
 	// Bullet Hit Reaction
