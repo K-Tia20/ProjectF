@@ -61,6 +61,9 @@ protected:
 	
 	virtual void OnGetUpFinished() override;
 	
+	// 플레이어를 처음 타겟으로 등록했을 때 자식 몬스터가 반응
+	virtual void OnTargetAcquired(AActor* NewTarget);
+	
 	// 일반 좀비는 true, 보스는 false
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie")
 	bool BReturnToSpawnLocation = true;
@@ -85,7 +88,35 @@ protected:
 	bool HasLineOfSight(AActor* Player);
 
 	virtual void OnDamaged(AActor* DamageCauser) override;
+public:
+	
+	// 보스가 지정한 위치로 우선 이동하라는 명령
+	UFUNCTION(BlueprintCallable, Category = "Zombie|BossCommand")
+	void ReceiveBossMoveCommand(
+		const FVector& InCommandLocation,
+		AActor* InCommandTarget
+	);
+protected:
+	
+	// 보스의 이동 명령을 수행 중인지
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Zombie|BossCommand")
+	bool bFollowingBossCommand = false;
 
+	// 보스가 지정한 포위 위치
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Zombie|BossCommand")
+	FVector BossCommandLocation = FVector::ZeroVector;
+
+	// 포위 후 공격할 플레이어
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Zombie|BossCommand")
+	AActor* BossCommandTarget = nullptr;
+
+	// 명령 위치 도착 판정 거리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|BossCommand")
+	float BossCommandAcceptanceRadius = 100.f;
+
+	void UpdateBossCommand();
+	void FinishBossCommand();
+	
 	// 플레이어를 놓쳤을 때 실행
 	virtual void HandleLostTarget();
 
