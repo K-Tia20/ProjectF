@@ -107,4 +107,7 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "SuicideZombie|Visual")
 	void OnSuicideExploded();
 	
+	UFUNCTION(BlueprintPure, Category = "SuicideZombie|WeakPoint")
+	bool IsWeakPointLocation(const FVector& WorldLocation) const;
+	
 };

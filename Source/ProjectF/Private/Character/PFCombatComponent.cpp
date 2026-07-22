@@ -425,16 +425,37 @@ void UPFCombatComponent::FireWeapon()
 
                 if (APFSuicideZombie* SuicideZombie = Cast<APFSuicideZombie>(Monster))
                 {
-                    if (SuicideZombie->IsWeakPointComponent(HitComponent))
+                    const bool bHitWeakPointComponent =
+    SuicideZombie->IsWeakPointComponent(HitComponent);
+
+                    const bool bHitWeakPointLocation =
+                        SuicideZombie->IsWeakPointLocation(
+                            HitResult.ImpactPoint
+                        );
+
+                    if (bHitWeakPointComponent || bHitWeakPointLocation)
                     {
-                        UE_LOG(LogTemp, Warning, TEXT("자폭 좀비 약점 명중"));
-                        SuicideZombie->TriggerWeakPointExplosion(); 
-                        bWeakPointHit = true; 
+                        UE_LOG(
+                            LogTemp,
+                            Warning,
+                            TEXT(
+                                "자폭 좀비 약점 명중 / Component: %s / LocationCheck: %d"
+                            ),
+                            *GetNameSafe(HitComponent),
+                            bHitWeakPointLocation
+                        );
+
+                        SuicideZombie->TriggerWeakPointExplosion();
+                        bWeakPointHit = true;
                     }
                 }
 
                 if (!bWeakPointHit) 
                 {
+                    // 총알이 날아간 방향
+                    const FVector HitDirection =
+                        (HitResult.ImpactPoint - StartLocation).GetSafeNormal();
+                    
                     if (HitBoneName == TEXT("head"))
                     {
                         UE_LOG(LogTemp, Warning, TEXT("크리티컬"));
@@ -444,8 +465,26 @@ void UPFCombatComponent::FireWeapon()
                     {
                         Monster->TakeDamageFromMonster(AttackDamage, Owner);
                     }
-                }
+                    
+                    // 총알 피해로 죽지 않은 경우에만 맞은 부위 흔들기
+                    if (!Monster->IsMonsterDead())
+                    {
+                        Monster->ApplyBulletHitReaction(
+                            HitBoneName,
+                            HitDirection
+                        );
+                    }
 
+                    UE_LOG(
+                        LogTemp,
+                        Warning,
+                        TEXT("[Combat] Hit Reaction / Component: %s / Bone: %s"),
+                        *GetNameSafe(HitComponent),
+                        *HitBoneName.ToString()
+                    );
+                
+                }
+                
                 if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
                 {
                     PlayerController->ShowHitMarker();
