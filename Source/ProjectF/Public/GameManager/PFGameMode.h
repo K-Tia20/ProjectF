@@ -22,7 +22,7 @@ public:
     
 	APFGameMode();
     
-	void OnMonsterKilled();
+	void OnMonsterKilled(AActor* KilledMonster);
     
 	void ProceedToNextLevel();
     

@@ -11,6 +11,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Misc/OutputDeviceNull.h"
 #include "Item/PFBaseItem.h"
+#include "Monster/PFBossCharacter.h"
 
 
 APFGameMode::APFGameMode()
@@ -23,29 +24,46 @@ APFGameMode::APFGameMode()
 
 
 
-void APFGameMode::OnMonsterKilled()
+void APFGameMode::OnMonsterKilled(AActor* KilledMonster)
 {
 	if (!PFGameState) return;
+
+	// 4-3 보스 웨이브일 때의 예외 처리
+	if (PFGameState->GetCurrentLevel() == 4 && PFGameState->GetCurrentWave() == 3)
+	{
+		// KilledMonster에 보스몬스터 할당
+		APFBossCharacter* Boss = Cast<APFBossCharacter>(KilledMonster);
+		if (Boss)
+		{
+
+			PFGameState->SetRemainingMonsters(0);
+
+			APFPlayerController* PlayerController = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController());
+			if (PlayerController)
+			{
+				// 보스 처치 문구 출력 함수 구현 후 작성
+                
+				// 3초 딜레이 후 게임 클리어
+				FTimerHandle ClearTimerHandle;
+				GetWorld()->GetTimerManager().SetTimer(ClearTimerHandle, [PlayerController]()
+				{
+					if (PlayerController)
+					{
+						PlayerController->ShowGameOver(true); // true = 게임 클리어!
+					}
+				}, 3.0f, false);
+			}
+		}
+		return; 
+	}
+	
 	PFGameState->OnMonsterKilled();
 	UE_LOG(LogTemp, Log, TEXT("몬스터 처치! 남은 몬스터: %d"), PFGameState->GetRemainingMonsters());
 
 	if (PFGameState->GetRemainingMonsters() <= 0)
 	{
-		//  4레벨 3웨이브(최종 보스)를 잡았는지 확인
-		if (PFGameState->GetCurrentLevel() == 4 && PFGameState->GetCurrentWave() == 3)
-		{
-			APFPlayerController* PlayerController = Cast<APFPlayerController>(GetWorld()->GetFirstPlayerController());
-			if (PlayerController)
-			{
-				PlayerController->ShowGameOver(true); // true = 게임 클리어!
-			}
-		}
-		else
-		{
-			WaveClear(); // 다음 웨이브 진행
-		}
+		WaveClear();
 	}
-	
 }
 
 
