@@ -390,7 +390,7 @@ void APFMonsterCharacter::Die()
 	if (APFGameMode* GameMode =
 		Cast<APFGameMode>(GetWorld()->GetAuthGameMode()))
 	{
-		GameMode->OnMonsterKilled();
+		GameMode->OnMonsterKilled(this);
 	}
 
 	// 일정 시간 후 시체 제거
