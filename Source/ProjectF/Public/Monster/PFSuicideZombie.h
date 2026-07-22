@@ -103,4 +103,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "SuicideZombie|Visual")
 	void OnExplosionWarningStarted();
 	
+	// 실제 폭발 순간 BP에 알림
+	UFUNCTION(BlueprintImplementableEvent, Category = "SuicideZombie|Visual")
+	void OnSuicideExploded();
+	
 };
