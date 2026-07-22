@@ -1,5 +1,5 @@
 #include "Character/PFCombatComponent.h"
-#include "DrawDebugHelpers.h"
+//#include "DrawDebugHelpers.h"
 #include "GameManager/PFPlayerController.h"
 #include "Monster/PFMonsterCharacter.h" 
 #include "GameFramework/Pawn.h"
@@ -10,6 +10,7 @@
 #include "Engine/OverlapResult.h"
 #include "Monster/PFSuicideZombie.h"
 #include "Kismet/GameplayStatics.h" 
+#include "Components/BoxComponent.h"
 //#include "GameManager/PFGameState.h"  
 
 UPFCombatComponent::UPFCombatComponent()
@@ -368,17 +369,6 @@ void UPFCombatComponent::FireWeapon()
             if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
             {
                 PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo);
-
-                if (FireCameraShakeClass && PlayerController->IsLocalController())
-                {
-                    PlayerController->ClientStartCameraShake(FireCameraShakeClass);
-                }
-
-                if (CurrentWeapon != EWeaponType::Sword)
-                {
-                    float RecoilAmount = (CurrentWeapon == EWeaponType::Rifle) ? -0.8f : -1.2f;
-                    Character->AddControllerPitchInput(RecoilAmount);
-                }
             }
         }
     }
@@ -410,7 +400,24 @@ void UPFCombatComponent::FireWeapon()
        ECC_Visibility,
        CollisionParams
     );
-
+    
+    // 총알 방향과 명중 결과가 결정된 뒤 카메라 흔들림
+    if (APFPlayerController* PlayerController =
+        Cast<APFPlayerController>(OwnerPawn->GetController()))
+    {
+        if (FireCameraShakeClass &&
+            PlayerController->IsLocalController())
+        {
+            PlayerController->ClientStartCameraShake(FireCameraShakeClass);
+        }
+    }
+    
+    if (Character && CurrentWeapon != EWeaponType::Sword)
+    {
+        float RecoilAmount = (CurrentWeapon == EWeaponType::Rifle) ? -0.8f : -1.2f;
+        Character->AddControllerPitchInput(RecoilAmount);
+    }
+        
     if (bHit)
     {
         AActor* HitActor = HitResult.GetActor();
@@ -422,11 +429,78 @@ void UPFCombatComponent::FireWeapon()
                 FName HitBoneName = HitResult.BoneName;
                 UPrimitiveComponent* HitComponent = HitResult.GetComponent();
                 bool bWeakPointHit = false;
+                
+                bool bHitHeadBoxLocation = false;
+
+                const TArray<UActorComponent*> HeadBoxComponents =
+                    Monster->GetComponentsByTag(
+                        UBoxComponent::StaticClass(),
+                        TEXT("HeadHitBox")
+                    );
+
+                for (UActorComponent* Component : HeadBoxComponents)
+                {
+                    const UBoxComponent* HeadBox =
+                        Cast<UBoxComponent>(Component);
+
+                    if (!HeadBox)
+                    {
+                        continue;
+                    }
+
+                    const FVector LocalHitLocation =
+                        HeadBox->GetComponentTransform()
+                            .InverseTransformPosition(
+                                HitResult.ImpactPoint
+                            );
+
+                    const FVector Extent =
+                        HeadBox->GetUnscaledBoxExtent() +
+                        FVector(2.f);
+
+                    bHitHeadBoxLocation =
+                        FMath::Abs(LocalHitLocation.X) <= Extent.X &&
+                        FMath::Abs(LocalHitLocation.Y) <= Extent.Y &&
+                        FMath::Abs(LocalHitLocation.Z) <= Extent.Z;
+
+                    if (bHitHeadBoxLocation)
+                    {
+                        break;
+                    }
+                }
+                
+                // 머리 본 또는 머리 전용 박스를 맞혔는지 확인
+                const bool bHitHeadBox =
+                    HitComponent &&
+                    HitComponent->ComponentHasTag(TEXT("HeadHitBox"));
+
+                const bool bHeadShot =
+                    HitBoneName == TEXT("Head") ||
+                        bHitHeadBox ||
+                        bHitHeadBoxLocation;
+                
+                // 머리 박스를 맞힌 경우 피격 리액션용 본을 Head로 지정
+                const FName ReactionBoneName =
+                     bHeadShot ? FName(TEXT("Head")) : HitBoneName;
+                
+                UE_LOG(
+                LogTemp,
+                Warning,
+                TEXT(
+                "[HeadCheck] Boxes: %d / DirectBox: %d / LocationBox: %d / HeadShot: %d / Component: %s / Bone: %s"
+                ),
+                HeadBoxComponents.Num(),
+                bHitHeadBox,
+                bHitHeadBoxLocation,
+                bHeadShot,
+                *GetNameSafe(HitComponent),
+                *HitBoneName.ToString()
+                );
 
                 if (APFSuicideZombie* SuicideZombie = Cast<APFSuicideZombie>(Monster))
                 {
                     const bool bHitWeakPointComponent =
-    SuicideZombie->IsWeakPointComponent(HitComponent);
+                    SuicideZombie->IsWeakPointComponent(HitComponent);
 
                     const bool bHitWeakPointLocation =
                         SuicideZombie->IsWeakPointLocation(
@@ -456,21 +530,34 @@ void UPFCombatComponent::FireWeapon()
                     const FVector HitDirection =
                         (HitResult.ImpactPoint - StartLocation).GetSafeNormal();
                     
-                    if (HitBoneName == TEXT("head"))
+                    if (bHeadShot)
                     {
-                        UE_LOG(LogTemp, Warning, TEXT("크리티컬"));
-                        Monster->TakeDamageFromMonster(AttackDamage * 2.0f, Owner);
+                        UE_LOG(
+                            LogTemp,
+                            Warning,
+                            TEXT("[Combat] Head Shot / Component: %s / Bone: %s"),
+                            *GetNameSafe(HitComponent),
+                            *HitBoneName.ToString()
+                        );
+
+                        Monster->TakeDamageFromMonster(
+                            AttackDamage * 2.f,
+                            Owner
+                        );
                     }
                     else
                     {
-                        Monster->TakeDamageFromMonster(AttackDamage, Owner);
+                        Monster->TakeDamageFromMonster(
+                            AttackDamage,
+                            Owner
+                        );
                     }
                     
                     // 총알 피해로 죽지 않은 경우에만 맞은 부위 흔들기
                     if (!Monster->IsMonsterDead())
                     {
                         Monster->ApplyBulletHitReaction(
-                            HitBoneName,
+                            ReactionBoneName,
                             HitDirection
                         );
                     }

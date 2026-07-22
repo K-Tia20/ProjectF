@@ -552,7 +552,7 @@ void APFBasicZombie::OnDamaged(AActor* DamageCauser)
 	// 피격으로 타겟을 잡았으므로 마지막 위치 체크 타이머 제거
 	GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Detected attacker immediately"));
+	
 
 	ChasePlayer();
 }
