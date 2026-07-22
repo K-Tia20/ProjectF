@@ -196,6 +196,9 @@ void APFSuicideZombie::Explode()
 	bIsExploding = false;
 	bIsCorpseBomb = false;
 	bIsAttacking = false;
+	
+	// 심장박동, 점멸 등을 BP에서 중단
+	OnSuicideExploded();
 
 	GetWorldTimerManager().ClearTimer(ExplosionTimerHandle);
 	
