@@ -81,6 +81,9 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 
 bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
+    // 무기 전환 시 진행 중이던 연사 중단 [추가]
+    StopFire();
+
     /*
     int32 CurrentWave = 1; 
     if (GetWorld())
@@ -191,13 +194,15 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         AttackDamage = 15.f;
         AttackRange = 3000.f;
         FireRate = 0.25f;
+        bIsAutomatic = false; 
         break;
     case EWeaponType::Rifle:
         MaxAmmo = 30;
         CurrentAmmo = RifleCurrentAmmo;
         AttackDamage = 25.f;
         AttackRange = 5000.f;
-        FireRate = 0.1f;
+        FireRate = 0.1f;       
+        bIsAutomatic = true;  
         break;
     case EWeaponType::Sword:
         MaxAmmo = 5;
@@ -205,7 +210,7 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         AttackDamage = 100.f;
         AttackRange = 150.f; 
         FireRate = 1.0f;
-        break;
+        bIsAutomatic = false; 
     }
     
     
@@ -215,6 +220,34 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     }
 
     return true; 
+}
+
+
+void UPFCombatComponent::StartFire()
+{
+    
+    FireWeapon();
+
+    
+    if (bIsAutomatic && CurrentAmmo > 0)
+    {
+        GetWorld()->GetTimerManager().SetTimer(
+            AutoFireTimerHandle,
+            this,
+            &UPFCombatComponent::FireWeapon,
+            FireRate, 
+            true      
+        );
+    }
+}
+
+
+void UPFCombatComponent::StopFire()
+{
+    if (GetWorld())
+    {
+        GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
+    }
 }
 
 void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
@@ -297,19 +330,29 @@ void UPFCombatComponent::ExecuteThrow()
 void UPFCombatComponent::FireWeapon()
 {
     
-    if (!bCanFire || CurrentAmmo <= 0) return;
-    
+    if (CurrentAmmo <= 0)
+    {
+        StopFire(); 
+        return;
+    }
+
+   
+    if (!bIsAutomatic && !bCanFire) return; 
     
     CurrentAmmo--;
-    bCanFire = false;
 
-    GetWorld()->GetTimerManager().SetTimer(
-        FireTimerHandle,
-        this,
-        &UPFCombatComponent::ResetFire,
-        FireRate, 
-        false
-    );
+    
+    if (!bIsAutomatic) 
+    {
+        bCanFire = false;
+        GetWorld()->GetTimerManager().SetTimer(
+            FireTimerHandle,
+            this,
+            &UPFCombatComponent::ResetFire,
+            FireRate, 
+            false
+        );
+    }
 
     AActor* Owner = GetOwner();
 
@@ -343,6 +386,19 @@ void UPFCombatComponent::FireWeapon()
             if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
             {
                 PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo);
+
+              
+                if (FireCameraShakeClass && PlayerController->IsLocalController())
+                {
+                    PlayerController->ClientStartCameraShake(FireCameraShakeClass);
+                }
+
+              
+                if (CurrentWeapon != EWeaponType::Sword)
+                {
+                    float RecoilAmount = (CurrentWeapon == EWeaponType::Rifle) ? -0.8f : -1.2f; // 권총이 좀 더 튐
+                    Character->AddControllerPitchInput(RecoilAmount);
+                }
             }
         }
     }
@@ -376,7 +432,7 @@ void UPFCombatComponent::FireWeapon()
        CollisionParams
     );
 
-    DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 2.f, 0, 1.f);
+   // DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 2.f, 0, 1.f);
 
     if (bHit)
     {
@@ -401,12 +457,12 @@ void UPFCombatComponent::FireWeapon()
                     }
                 }
 
-                // 약점이 아닌 경우 일반/헤드샷 데미지 처리
+                
                 if (!bWeakPointHit) 
                 {
                     if (HitBoneName == TEXT("head"))
                     {
-                        UE_LOG(LogTemp, Warning, TEXT("🎯 헤드샷 크리티컬 히트!!"));
+                        UE_LOG(LogTemp, Warning, TEXT("크리티컬"));
                         Monster->TakeDamageFromMonster(AttackDamage * 2.0f, Owner);
                     }
                     else

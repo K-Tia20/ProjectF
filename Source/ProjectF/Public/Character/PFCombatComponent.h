@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "PFCombatComponent.generated.h"
-
+#include "Camera/CameraShakeBase.h"       
+#include "PFCombatComponent.generated.h"  
 
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
@@ -21,28 +21,26 @@ class PROJECTF_API UPFCombatComponent : public UActorComponent
 public: 
     UPFCombatComponent();
 
-protected:
+    
     virtual void BeginPlay() override;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+protected:
+    bool bIsGrenadeOnCooldown = false;
     
     UPROPERTY(EditAnywhere, Category = "Combat")
     float GrenadeCooldown = 5.0f;
-
-  
-    bool bIsGrenadeOnCooldown = false;
-
  
     FTimerHandle GrenadeCooldownTimerHandle;
 
-    
     void ResetGrenadeCooldown() { bIsGrenadeOnCooldown = false; };
 
 public: 
-    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-    
-    // 장착된 무기 메시를 담을 변수
     UPROPERTY(VisibleAnywhere, Category = "Combat|Weapon")
     UStaticMeshComponent* CurrentWeaponMesh;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Combat|Recoil")
+    TSubclassOf<UCameraShakeBase> FireCameraShakeClass;
    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|Grenade")
     UStaticMeshComponent* HandGrenadeMesh;
@@ -50,7 +48,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void ExecuteMeleeHitCheck();
 
-    
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
     void EquipWeapon(UStaticMesh* WeaponMesh);
     
@@ -69,10 +66,15 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void FireWeapon();
 
-     
+    // [추가] 연사 시작 / 종료 함수 선언
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void StartFire(); // [추가]
+
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void StopFire();  // [추가]
+
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
     bool SwitchWeapon(EWeaponType NewWeapon);
-    
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Grenade")
     class UAnimMontage* ThrowMontage;
@@ -80,22 +82,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Grenade")
     TSubclassOf<class APFGrenade> GrenadeClass;
     
-    
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Grenade")
     FName HandSocketName = TEXT("Hand_R_Socket");
 
-   
     void PlayThrowAnimation();
 
-    
     UFUNCTION(BlueprintCallable, Category = "Combat|Grenade")
     void ExecuteThrow();
 
-    
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     EWeaponType CurrentWeapon = EWeaponType::Pistol;
 
-    
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     int32 CurrentAmmo = 15;
 
@@ -124,14 +121,14 @@ public:
     
     void ResetFire();
 
-    // 수류탄 증가 함수
+    
     UFUNCTION(BlueprintCallable, Category = "Combat|Grenade")
     void AddGrenades(int32 Amount);
 
     UFUNCTION(BlueprintPure, Category = "Combat|Grenade")
     int32 GetGrenadeCount() const { return GrenadeCount; }
     
-    // 수류탄 갯수
+    
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     int32 GrenadeCount = 3;
 
@@ -140,4 +137,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float AttackDamage = 25.f;
+
+private:
+    
+    FTimerHandle AutoFireTimerHandle; 
+    bool bIsAutomatic = false;       
 };
