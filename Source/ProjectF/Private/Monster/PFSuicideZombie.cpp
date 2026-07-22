@@ -123,6 +123,8 @@ void APFSuicideZombie::StartExplosion()
 	bIsExploding = true;
 	bIsAttacking = true;
 	
+	OnExplosionWarningStarted();
+	
 	// 자폭 준비 중에는 이동 정지
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
