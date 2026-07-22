@@ -15,7 +15,7 @@
 
 
 
-//최신2026-07-13
+//최신2026-07-22
 APFMonsterCharacter::APFMonsterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -122,14 +122,7 @@ void APFMonsterCharacter::TakeDamageFromMonster(float DamageAmount, AActor* Dama
 		return;
 	}
 	//사운드
-	if (HitSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(
-			GetWorld(),
-			HitSound,
-			GetActorLocation()
-		);
-	}
+	PlayDamageSound();
 	
 	CurrentHP -= DamageAmount;
 	
@@ -955,5 +948,20 @@ void APFMonsterCharacter::FinishBulletHitReaction()
 		ReactionBone,
 		false,
 		true
+	);
+}
+
+
+void APFMonsterCharacter::PlayDamageSound()
+{
+	if (!HitSound)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		HitSound,
+		GetActorLocation()
 	);
 }

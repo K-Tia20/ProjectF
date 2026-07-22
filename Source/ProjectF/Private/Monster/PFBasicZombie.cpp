@@ -531,6 +531,15 @@ void APFBasicZombie::OnDamaged(AActor* DamageCauser)
 	{
 		return;
 	}
+	
+	// 포위 이동 중 피격되면 명령을 포기하고 공격자에게 돌격
+	GetWorldTimerManager().ClearTimer(
+		BossCommandTimeoutTimerHandle
+	);
+
+	bFollowingBossCommand = false;
+	BossCommandTarget = nullptr;
+	BossCommandLocation = FVector::ZeroVector;
 
 	TargetActor = DamageCauser;
 	CurrentDetectTime = RequiredDetectTime;
@@ -557,6 +566,7 @@ void APFBasicZombie::Die()
 {
 	GetWorldTimerManager().ClearTimer(DetectTimerHandle);
 	GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
+	GetWorldTimerManager().ClearTimer(BossCommandTimeoutTimerHandle);
 
 	TargetActor = nullptr;
 	BHasTarget = false;
@@ -602,7 +612,7 @@ void APFBasicZombie::OnGetUpFinished()
 void APFBasicZombie::ReceiveBossMoveCommand(
 	const FVector& InCommandLocation,
 	AActor* InCommandTarget
-)
+	)
 {
 	if (IsDead || !IsValid(InCommandTarget))
 	{
@@ -635,6 +645,19 @@ void APFBasicZombie::ReceiveBossMoveCommand(
 			BossCommandAcceptanceRadius
 		);
 	}
+	
+	// 포위 명령 제한시간 시작
+	GetWorldTimerManager().ClearTimer(
+		BossCommandTimeoutTimerHandle
+	);
+
+	GetWorldTimerManager().SetTimer(
+		BossCommandTimeoutTimerHandle,
+		this,
+		&APFBasicZombie::HandleBossCommandTimeout,
+		BossCommandTimeout,
+		false
+	);
 
 	UE_LOG(
 		LogTemp,
@@ -654,8 +677,13 @@ void APFBasicZombie::UpdateBossCommand()
 	// 플레이어가 사라졌다면 명령 취소
 	if (!IsValid(BossCommandTarget))
 	{
+		GetWorldTimerManager().ClearTimer(
+		BossCommandTimeoutTimerHandle
+		);
+		
 		bFollowingBossCommand = false;
 		BossCommandTarget = nullptr;
+		BossCommandLocation = FVector::ZeroVector;
 
 		if (AAIController* AIController =
 			Cast<AAIController>(GetController()))
@@ -687,11 +715,17 @@ void APFBasicZombie::FinishBossCommand()
 	{
 		return;
 	}
+	
+	// 정상 도착했으므로 2초 제한시간 제거
+	GetWorldTimerManager().ClearTimer(
+		BossCommandTimeoutTimerHandle
+	);
 
 	AActor* CommandTarget = BossCommandTarget;
 
 	bFollowingBossCommand = false;
 	BossCommandTarget = nullptr;
+	BossCommandLocation = FVector::ZeroVector;
 
 	if (!IsValid(CommandTarget))
 	{
@@ -701,6 +735,9 @@ void APFBasicZombie::FinishBossCommand()
 	TargetActor = CommandTarget;
 	BHasTarget = true;
 	BMovingToLastKnownLocation = false;
+	
+	CurrentDetectTime = RequiredDetectTime;
+	CurrentLostSightTime = 0.f;
 
 	LastKnownLocation =
 		CommandTarget->GetActorLocation();
@@ -714,4 +751,74 @@ void APFBasicZombie::FinishBossCommand()
 
 	// 포위 지점에 도착한 뒤 기존 추적 행동 시작
 	ChasePlayer();
+}
+
+//즉시 돌격 함수
+void APFBasicZombie::ReceiveBossRushCommand(
+	AActor* InCommandTarget
+)
+{
+	if (IsDead || !IsValid(InCommandTarget))
+	{
+		return;
+	}
+
+	// 기존 포위 명령 및 제한시간 제거
+	GetWorldTimerManager().ClearTimer(
+		BossCommandTimeoutTimerHandle
+	);
+
+	bFollowingBossCommand = false;
+	BossCommandTarget = nullptr;
+	BossCommandLocation = FVector::ZeroVector;
+
+	// 기존 마지막 위치 이동도 중단
+	GetWorldTimerManager().ClearTimer(
+		LastKnownLocationTimerHandle
+	);
+
+	TargetActor = InCommandTarget;
+	LastKnownLocation = InCommandTarget->GetActorLocation();
+
+	BHasTarget = true;
+	BMovingToLastKnownLocation = false;
+
+	CurrentDetectTime = RequiredDetectTime;
+	CurrentLostSightTime = 0.f;
+
+	if (AAIController* AIController =
+		Cast<AAIController>(GetController()))
+	{
+		AIController->StopMovement();
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Zombie] Boss Rush Command / Target: %s"),
+		*InCommandTarget->GetName()
+	);
+
+	ChasePlayer();
+}
+
+//명령 타임아웃 함수
+void APFBasicZombie::HandleBossCommandTimeout()
+{
+	if (IsDead || !bFollowingBossCommand)
+	{
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Zombie] Boss Command Timeout - Switch To Rush")
+	);
+
+	/*
+	 * FinishBossCommand가 BossCommandTarget을
+	 * 일반 TargetActor로 넘기고 플레이어 추적을 시작한다.
+	 */
+	FinishBossCommand();
 }

@@ -160,6 +160,32 @@ void APFBossCharacter::TakeArmorDamage(float ArmorDamageAmount)
 	const bool BWasArmorBroken = IsArmorBroken();
 
 	CurrentArmor = FMath::Clamp(CurrentArmor - ArmorDamageAmount, 0.f, MaxArmor);
+	
+	const bool bIsNowArmorBroken = IsArmorBroken();
+	
+	// 방어도가 이번 공격으로 완전히 깨지지 않았다면 일반 피격음
+	if (!bIsNowArmorBroken && ArmorHitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ArmorHitSound,
+			GetActorLocation()
+		);
+	}
+	
+	if (!BWasArmorBroken && bIsNowArmorBroken)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Boss] Armor Broken"));
+
+		if (ArmorBreakSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				ArmorBreakSound,
+				GetActorLocation()
+			);
+		}
+	}
 
 	UE_LOG(
 		LogTemp,
@@ -547,7 +573,7 @@ void APFBossCharacter::SummonMinions()
 		SummonCount
 	);
 	// 소환된 몬스터들을 플레이어 주변으로 분산
-	CommandSummonedMinionsToSurround();
+	CommandSummonedMinionsByStrategy();
 	
 }
 
@@ -699,11 +725,12 @@ void APFBossCharacter::CommandSummonedMinionsToSurround()
 	if (!NavSystem)
 	{
 		UE_LOG(
-			LogTemp,
-			Error,
-			TEXT("[Boss] Command Failed - NavSystem Not Found")
+		LogTemp,
+		Error,
+		TEXT("[Boss] Surround Failed - Switch All To Rush")
 		);
-
+		
+		CommandSummonedMinionsToRush();
 		return;
 	}
 
@@ -759,12 +786,14 @@ void APFBossCharacter::CommandSummonedMinionsToSurround()
 		if (!bFoundCommandLocation)
 		{
 			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[Boss] Failed To Find Surround Location / Index: %d"),
-				Index
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Surround Location Failed / Index: %d / Switch To Rush"),
+			Index
 			);
-
+			
+			// 해당 몬스터만 즉시 돌격
+			Minion->ReceiveBossRushCommand(TargetActor);
 			continue;
 		}
 
@@ -781,6 +810,73 @@ void APFBossCharacter::CommandSummonedMinionsToSurround()
 			*CommandNavLocation.Location.ToString()
 		);
 	}
+}
+
+//전체 돌격
+void APFBossCharacter::CommandSummonedMinionsToRush()
+{
+	if (IsDead || !IsValid(TargetActor))
+	{
+		return;
+	}
+
+	for (APFBasicZombie* Minion :
+		CurrentSummonedMinions)
+	{
+		if (!IsValid(Minion) ||
+			Minion->IsMonsterDead())
+		{
+			continue;
+		}
+
+		Minion->ReceiveBossRushCommand(TargetActor);
+	}
+}
+
+//전략 선택 함수
+void APFBossCharacter::CommandSummonedMinionsByStrategy()
+{
+	if (IsDead ||
+		!IsValid(TargetActor) ||
+		CurrentSummonedMinions.IsEmpty())
+	{
+		return;
+	}
+
+	const float TargetSpeed =
+		TargetActor->GetVelocity().Size2D();
+
+	/*
+	 * 플레이어가 빠르게 이동 중이면
+	 * 현재 위치 기준 포위 지점이 금방 낡아버리므로 즉시 돌격한다.
+	 *
+	 * 플레이어가 느리거나 멈춰 있으면 포위한다.
+	 */
+	const bool bShouldRush =
+		TargetSpeed >= DirectRushSpeedThreshold ||
+		CurrentSummonedMinions.Num() < 2;
+
+	if (bShouldRush)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Strategy: Direct Rush / PlayerSpeed: %f"),
+			TargetSpeed
+		);
+
+		CommandSummonedMinionsToRush();
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Strategy: Surround / PlayerSpeed: %f"),
+		TargetSpeed
+	);
+
+	CommandSummonedMinionsToSurround();
 }
 
 // =====================================================
@@ -849,4 +945,25 @@ void APFBossCharacter::Attack()
 
 	// 소환 쿨타임 중에는 기존 주먹 공격
 	Super::Attack();
+}
+
+void APFBossCharacter::PlayDamageSound()
+{
+	// 방어도가 남아 있을 때는 일반 피격음 대신 방어도 피격음
+	if (CurrentArmor > 0.f)
+	{
+		if (ArmorHitSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				ArmorHitSound,
+				GetActorLocation()
+			);
+		}
+
+		return;
+	}
+
+	// 방어도가 깨진 뒤에는 부모의 일반 HitSound 재생
+	Super::PlayDamageSound();
 }

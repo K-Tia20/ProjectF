@@ -154,6 +154,16 @@ protected:
 	// 이번에 소환한 몬스터들에게 포위 명령 전달
 	void CommandSummonedMinionsToSurround();
 	
+	// 플레이어가 이 속도 이상으로 이동 중이면 포위 대신 바로 돌격
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Pattern|Command")
+	float DirectRushSpeedThreshold = 350.f;
+
+	// 상황에 따라 포위 또는 돌격 선택
+	void CommandSummonedMinionsByStrategy();
+
+	// 모든 소환 몬스터에게 즉시 돌격 명령
+	void CommandSummonedMinionsToRush();
+	
 	// 소환 쿨타임이 준비됐을 때 보스가 공격 가능해질 때까지 재확인
 	FTimerHandle RoarSummonRetryTimerHandle;
 
@@ -171,7 +181,7 @@ protected:
 	// Boss Phase
 	// =====================================================
 
-protected:
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Phase")
 	int32 BossPhase = 1;
 
@@ -214,7 +224,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Sound")
 	USoundBase* RangedAttackSound = nullptr;
-protected:
+	
+	virtual void PlayDamageSound() override;
+
 	// 나중에 구현 예정
 	void StartChargePattern();
 

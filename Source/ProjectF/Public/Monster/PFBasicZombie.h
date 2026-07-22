@@ -96,6 +96,11 @@ public:
 		const FVector& InCommandLocation,
 		AActor* InCommandTarget
 	);
+	
+	// 보스가 플레이어에게 즉시 돌격하라고 명령
+	UFUNCTION(BlueprintCallable, Category = "Zombie|BossCommand")
+	void ReceiveBossRushCommand(AActor* InCommandTarget);
+	
 protected:
 	
 	// 보스의 이동 명령을 수행 중인지
@@ -113,6 +118,16 @@ protected:
 	// 명령 위치 도착 판정 거리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|BossCommand")
 	float BossCommandAcceptanceRadius = 100.f;
+	
+	// 포위 지점까지 이동할 수 있는 제한시간
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zombie|BossCommand")
+	float BossCommandTimeout = 2.f;
+
+	// 포위 명령 시간제한 타이머
+	FTimerHandle BossCommandTimeoutTimerHandle;
+
+	// 제한시간 안에 도착하지 못했을 때 실행
+	void HandleBossCommandTimeout();
 
 	void UpdateBossCommand();
 	void FinishBossCommand();

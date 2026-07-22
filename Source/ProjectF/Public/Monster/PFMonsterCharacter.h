@@ -202,6 +202,9 @@ protected:
 	// =====================================================
 	// Sound
 	// =====================================================
+	
+	// 몬스터 종류에 따라 피격음을 다르게 재생할 수 있도록 분리
+	virtual void PlayDamageSound();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Sound")
 	USoundBase* HitSound = nullptr;
