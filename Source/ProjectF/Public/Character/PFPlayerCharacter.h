@@ -3,7 +3,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "Sound/SoundBase.h" 
 #include "PFPlayerCharacter.generated.h"
+
 
 class USpringArmComponent;
 class UCameraComponent;
@@ -28,6 +30,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float MaxHealth = 100.0f;
 
+    
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayFootstepSound();
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
     bool bIsDead = false;
@@ -63,12 +68,16 @@ protected:
 
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
+    
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* FootstepSound;
 
-    // 상호작용 인풋 액션 변수
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractAction;
 
-    // F키(상호작용)를 눌렀을 때 실행될 함수
+    
     void OnInteract();
 
 public:
@@ -87,9 +96,11 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
     UInputAction* FireAction;
 
-    void Fire(const FInputActionValue& Value);
+    
+    void StartFire(const FInputActionValue& Value); 
+    void StopFire(const FInputActionValue& Value);  
 
-    //  무기 교체 인풋 액션 및 처리 함수 선언
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
     class UInputAction* SwitchWeaponAction;
 
@@ -116,11 +127,11 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* FireMontage;
 
-    // [추가된 코드] 캐릭터 사망 시 재생할 애니메이션 몽타주 변수
+    
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
     class UAnimMontage* DeathMontage;
 
-    // 현재 플레이어가 닿아있는 포탈을 보관할 변수
+    
     UPROPERTY()
     APFLevelPortal* TargetPortal;
 };

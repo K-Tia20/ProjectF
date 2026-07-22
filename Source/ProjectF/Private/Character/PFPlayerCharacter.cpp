@@ -12,6 +12,7 @@
 #include "GameManager/PFGameMode.h"         
 #include "Animation/AnimInstance.h"
 #include "Character/PFDashComponent.h"
+#include "Kismet/GameplayStatics.h" 
 
 APFPlayerCharacter::APFPlayerCharacter()
 {
@@ -147,12 +148,11 @@ void APFPlayerCharacter::Heal(float HealAmount)
     }
 }
 
-void APFPlayerCharacter::Fire(const FInputActionValue& Value)
+// [수정] 기존 Fire 함수 대신 StartFire 구현 (마우스 버튼을 눌렀을 때)
+void APFPlayerCharacter::StartFire(const FInputActionValue& Value)
 {
     if (bIsDead) return;
 
-    UE_LOG(LogTemp, Warning, TEXT("Fire 함수가 호출되었습니다!"));
-    
     if (FireMontage)
     {
         UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -164,7 +164,18 @@ void APFPlayerCharacter::Fire(const FInputActionValue& Value)
 
     if (CombatComponent)
     {
-        CombatComponent->FireWeapon();
+        CombatComponent->StartFire(); 
+    }
+}
+
+
+void APFPlayerCharacter::StopFire(const FInputActionValue& Value)
+{
+    if (bIsDead) return;
+
+    if (CombatComponent)
+    {
+        CombatComponent->StopFire(); 
     }
 }
 
@@ -186,7 +197,11 @@ void APFPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
         EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
         EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::Move);
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APFPlayerCharacter::Look);
-        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::Fire);
+        
+        // [수정] FireAction을 Started(누름) 및 Completed(뗌)로 각각 바인딩
+        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &APFPlayerCharacter::StartFire);  // [수정]
+        EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &APFPlayerCharacter::StopFire); // [추가]
+
         EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APFPlayerCharacter::OnInteract);
         EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ThrowGrenade);
         EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &APFPlayerCharacter::ChangeWeaponInput);
@@ -261,5 +276,21 @@ void APFPlayerCharacter::ChangeWeaponInput(const FInputActionValue& Value)
     if (!bSuccess)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Player] 현재 레벨에서는 해당 무기를 사용할 수 없습니다!"));
+    }
+}
+
+
+void APFPlayerCharacter::PlayFootstepSound()
+{
+   
+    if (bIsDead || GetCharacterMovement()->IsFalling())
+    {
+        return;
+    }
+
+   
+    if (FootstepSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, FootstepSound, GetActorLocation());
     }
 }
