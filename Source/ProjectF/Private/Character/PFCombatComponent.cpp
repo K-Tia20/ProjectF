@@ -9,6 +9,7 @@
 #include "TimerManager.h" 
 #include "Engine/OverlapResult.h"
 #include "Monster/PFSuicideZombie.h"
+#include "Kismet/GameplayStatics.h" 
 //#include "GameManager/PFGameState.h"  
 
 UPFCombatComponent::UPFCombatComponent()
@@ -81,33 +82,8 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 
 bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
-    // 무기 전환 시 진행 중이던 연사 중단 [추가]
     StopFire();
 
-    /*
-    int32 CurrentWave = 1; 
-    if (GetWorld())
-    {
-        if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
-        {   
-            CurrentWave = GameState->GetCurrentLevel(); 
-        }
-    } 
-    
-    
-    if (NewWeapon == EWeaponType::Rifle && CurrentWave < 2)
-    {  
-        UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentWave);
-        return false; 
-    }
-
-    if (NewWeapon == EWeaponType::Sword && CurrentWave < 3)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentWave);
-        return false;
-    }
-    */
-    
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -121,12 +97,10 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         break;
     }
     
-   
     CurrentWeapon = NewWeapon;
     
     AActor* Owner = GetOwner();
     if (Owner == nullptr) return false;
-    
     
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
@@ -165,7 +139,6 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     APawn* OwnerPawn = Cast<APawn>(Owner);
     APFPlayerController* PlayerController = OwnerPawn ? Cast<APFPlayerController>(OwnerPawn->GetController()) : nullptr;
     
-    
     if (PlayerController != nullptr)
     {
         FString NameToShow = TEXT("기본 무기");
@@ -184,7 +157,6 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 
         PlayerController->UpdateWeaponNameUI(NameToShow);
     }
-    
     
     switch (CurrentWeapon)
     {
@@ -213,7 +185,6 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         bIsAutomatic = false; 
     }
     
-    
     if (PlayerController != nullptr)
     {
         PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo); 
@@ -225,10 +196,8 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 
 void UPFCombatComponent::StartFire()
 {
-    
     FireWeapon();
 
-    
     if (bIsAutomatic && CurrentAmmo > 0)
     {
         GetWorld()->GetTimerManager().SetTimer(
@@ -329,19 +298,16 @@ void UPFCombatComponent::ExecuteThrow()
 
 void UPFCombatComponent::FireWeapon()
 {
-    
     if (CurrentAmmo <= 0)
     {
         StopFire(); 
         return;
     }
 
-   
     if (!bIsAutomatic && !bCanFire) return; 
     
     CurrentAmmo--;
 
-    
     if (!bIsAutomatic) 
     {
         bCanFire = false;
@@ -356,20 +322,37 @@ void UPFCombatComponent::FireWeapon()
 
     AActor* Owner = GetOwner();
 
-    
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
     {
         UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
         if (AnimInstance)
         {
-            if (CurrentWeapon == EWeaponType::Pistol && PistolFireMontage)
+            
+            if (CurrentWeapon == EWeaponType::Pistol)
             {
-                AnimInstance->Montage_Play(PistolFireMontage, 1.0f);
+                if (PistolFireMontage)
+                {
+                    AnimInstance->Montage_Play(PistolFireMontage, 1.0f);
+                }
+
+                if (PistolFireSound)
+                {
+                    UGameplayStatics::PlaySoundAtLocation(this, PistolFireSound, Character->GetActorLocation());
+                }
             }
-            else if (CurrentWeapon == EWeaponType::Rifle && RifleFireMontage)
+            
+            else if (CurrentWeapon == EWeaponType::Rifle)
             {
-                AnimInstance->Montage_Play(RifleFireMontage, 1.0f);
+                if (RifleFireMontage)
+                {
+                    AnimInstance->Montage_Play(RifleFireMontage, 1.0f);
+                }
+
+                if (RifleFireSound)
+                {
+                    UGameplayStatics::PlaySoundAtLocation(this, RifleFireSound, Character->GetActorLocation());
+                }
             }
             else if (CurrentWeapon == EWeaponType::Sword && SwordMontage)
             {
@@ -378,7 +361,6 @@ void UPFCombatComponent::FireWeapon()
         }
     }
 
-   
     if (Owner)
     {
         if (APawn* OwnerPawn = Cast<APawn>(Owner))
@@ -387,23 +369,20 @@ void UPFCombatComponent::FireWeapon()
             {
                 PlayerController->UpdateAmmoUI(CurrentAmmo, MaxAmmo);
 
-              
                 if (FireCameraShakeClass && PlayerController->IsLocalController())
                 {
                     PlayerController->ClientStartCameraShake(FireCameraShakeClass);
                 }
 
-              
                 if (CurrentWeapon != EWeaponType::Sword)
                 {
-                    float RecoilAmount = (CurrentWeapon == EWeaponType::Rifle) ? -0.8f : -1.2f; // 권총이 좀 더 튐
+                    float RecoilAmount = (CurrentWeapon == EWeaponType::Rifle) ? -0.8f : -1.2f;
                     Character->AddControllerPitchInput(RecoilAmount);
                 }
             }
         }
     }
 
-    
     if (CurrentWeapon == EWeaponType::Sword)
     {
         return; 
@@ -432,8 +411,6 @@ void UPFCombatComponent::FireWeapon()
        CollisionParams
     );
 
-   // DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 2.f, 0, 1.f);
-
     if (bHit)
     {
         AActor* HitActor = HitResult.GetActor();
@@ -446,7 +423,6 @@ void UPFCombatComponent::FireWeapon()
                 UPrimitiveComponent* HitComponent = HitResult.GetComponent();
                 bool bWeakPointHit = false;
 
-                
                 if (APFSuicideZombie* SuicideZombie = Cast<APFSuicideZombie>(Monster))
                 {
                     if (SuicideZombie->IsWeakPointComponent(HitComponent))
@@ -457,7 +433,6 @@ void UPFCombatComponent::FireWeapon()
                     }
                 }
 
-                
                 if (!bWeakPointHit) 
                 {
                     if (HitBoneName == TEXT("head"))

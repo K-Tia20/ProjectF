@@ -60,18 +60,26 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
     class UAnimMontage* SwordMontage;
     
+   
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound")
+    class USoundBase* PistolFireSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound")
+    class USoundBase* RifleFireSound;
+    
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     FName DefaultPistolBoneName = TEXT("weapon_r");
     
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void FireWeapon();
 
-    // [추가] 연사 시작 / 종료 함수 선언
+    
     UFUNCTION(BlueprintCallable, Category = "Combat")
-    void StartFire(); // [추가]
+    void StartFire(); 
 
     UFUNCTION(BlueprintCallable, Category = "Combat")
-    void StopFire();  // [추가]
+    void StopFire();  
 
     UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
     bool SwitchWeapon(EWeaponType NewWeapon);
@@ -96,7 +104,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     int32 CurrentAmmo = 15;
 
-    // 최대탄창
+    
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     int32 MaxAmmo = 30;
     
