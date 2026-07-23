@@ -746,6 +746,49 @@ void APFMonsterCharacter::RecoverFromKnockdown()
 	CapsuleComp->SetCollisionEnabled(
 		InitialCapsuleCollisionEnabled
 	);
+	
+	// 총알 라인트레이스용 충돌을 확실하게 복구
+	MeshComp->SetCollisionResponseToChannel(
+		ECC_Visibility,
+		ECR_Block
+	);
+
+	// 래그돌 이후 물리 충돌 상태 새로 생성
+	MeshComp->RecreatePhysicsState();
+	MeshComp->UpdateBounds();
+
+	// 머리 전용 히트박스도 다시 활성화
+	const TArray<UActorComponent*> HeadHitBoxes =
+		GetComponentsByTag(
+			UBoxComponent::StaticClass(),
+			TEXT("HeadHitBox")
+		);
+
+	for (UActorComponent* Component : HeadHitBoxes)
+	{
+		UBoxComponent* HeadHitBox =
+			Cast<UBoxComponent>(Component);
+
+		if (!HeadHitBox)
+		{
+			continue;
+		}
+
+		HeadHitBox->SetCollisionEnabled(
+			ECollisionEnabled::QueryOnly
+		);
+
+		HeadHitBox->SetCollisionResponseToAllChannels(
+			ECR_Ignore
+		);
+
+		HeadHitBox->SetCollisionResponseToChannel(
+			ECC_Visibility,
+			ECR_Block
+		);
+
+		HeadHitBox->UpdateOverlaps();
+	}
 
 	// 일어나는 동안에는 이동과 공격을 계속 막는다.
 	bIsAttacking = true;
@@ -834,6 +877,14 @@ void APFMonsterCharacter::ApplyBulletHitReaction(
 	{
 		return;
 	}
+	
+	// 골반부터 물리를 켜면 거의 전신이 흔들려
+	// 메시가 캡슐 아래로 파고들 수 있으므로 제외
+	if (HitBoneName == TEXT("Hips") ||
+		HitBoneName == TEXT("Root"))
+	{
+		return;
+	}
 
 	USkeletalMeshComponent* MeshComp = GetMesh();
 
@@ -845,32 +896,26 @@ void APFMonsterCharacter::ApplyBulletHitReaction(
 	// 이전 피격 반응 타이머 초기화
 	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
 
-	// 이전에 다른 부위가 물리 반응 중이었다면 먼저 복구
-	if (!CurrentHitReactionBone.IsNone() &&
-		CurrentHitReactionBone != HitBoneName)
+	// 이전 피격 반응이 남아 있다면
+	// 같은 부위를 다시 맞아도 먼저 완전히 복구한다.
+	if (!CurrentHitReactionBone.IsNone())
 	{
-		MeshComp->SetAllBodiesBelowPhysicsBlendWeight(
-			CurrentHitReactionBone,
-			0.f,
-			false,
-			true
-		);
-
-		MeshComp->SetAllBodiesBelowSimulatePhysics(
-			CurrentHitReactionBone,
-			false,
-			true
-		);
+		FinishBulletHitReaction();
 	}
 
 	CurrentHitReactionBone = HitBoneName;
 
 	FVector ReactionDirection = HitDirection.GetSafeNormal();
-
+		
 	if (ReactionDirection.IsNearlyZero())
 	{
 		ReactionDirection = -GetActorForwardVector();
 	}
+	
+	// 총알 피격 때문에 몸이 땅속으로 밀리지 않도록
+	// 수직 방향의 충격을 제거
+	ReactionDirection.Z = 0.f;
+	ReactionDirection.Normalize();
 
 	// 맞은 본과 그 아래 뼈들만 물리 활성화
 	MeshComp->SetAllBodiesBelowSimulatePhysics(

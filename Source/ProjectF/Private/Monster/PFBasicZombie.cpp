@@ -6,6 +6,7 @@
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Navigation/PathFollowingComponent.h"
 
 
 APFBasicZombie::APFBasicZombie()
@@ -337,19 +338,33 @@ void APFBasicZombie::OnTargetAcquired(AActor* NewTarget)
 
 void APFBasicZombie::ChasePlayer()
 {
-	if (bIsAttacking || !TargetActor)
+	if (bIsAttacking || !IsValid(TargetActor))
 	{
 		return;
 	}
 
-	AAIController* AIController = Cast<AAIController>(GetController());
+	AAIController* AIController =
+		Cast<AAIController>(GetController());
 
-	if (AIController)
+	if (!AIController)
 	{
-		AIController->MoveToActor( TargetActor,20.f,false );
+		return;
 	}
-}
 
+	// 이미 플레이어를 추적 중이면 이동 명령을 중복 요청하지 않는다.
+	if (AIController->GetMoveStatus() ==
+		EPathFollowingStatus::Moving)
+	{
+		return;
+	}
+
+	AIController->MoveToActor(
+		TargetActor,
+		MoveAcceptanceRadius,
+		false
+	);
+}
+	
 void APFBasicZombie::HandleLostTarget()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Lost Target"));
@@ -552,7 +567,7 @@ void APFBasicZombie::OnDamaged(AActor* DamageCauser)
 	// 피격으로 타겟을 잡았으므로 마지막 위치 체크 타이머 제거
 	GetWorldTimerManager().ClearTimer(LastKnownLocationTimerHandle);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Zombie] Detected attacker immediately"));
+	
 
 	ChasePlayer();
 }

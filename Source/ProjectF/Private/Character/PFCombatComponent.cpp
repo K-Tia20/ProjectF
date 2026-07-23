@@ -1,5 +1,5 @@
 #include "Character/PFCombatComponent.h"
-#include "DrawDebugHelpers.h"
+//#include "DrawDebugHelpers.h"
 #include "GameManager/PFPlayerController.h"
 #include "Monster/PFMonsterCharacter.h" 
 #include "GameFramework/Pawn.h"
@@ -9,6 +9,8 @@
 #include "TimerManager.h" 
 #include "Engine/OverlapResult.h"
 #include "Monster/PFSuicideZombie.h"
+#include "Kismet/GameplayStatics.h" 
+#include "Components/BoxComponent.h"
 //#include "GameManager/PFGameState.h"  
 
 UPFCombatComponent::UPFCombatComponent()
@@ -81,30 +83,8 @@ void UPFCombatComponent::EquipWeapon(UStaticMesh* WeaponMesh)
 
 bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
 {
-    /*
-    int32 CurrentWave = 1; 
-    if (GetWorld())
-    {
-        if (APFGameState* GameState = GetWorld()->GetGameState<APFGameState>())
-        {   
-            CurrentWave = GameState->GetCurrentLevel(); 
-        }
-    } 
-    
-    
-    if (NewWeapon == EWeaponType::Rifle && CurrentWave < 2)
-    {  
-        UE_LOG(LogTemp, Warning, TEXT("라이플은 레벨 2부터 사용 가능 (현재 레벨: %d)"), CurrentWave);
-        return false; 
-    }
+    StopFire();
 
-    if (NewWeapon == EWeaponType::Sword && CurrentWave < 3)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("대검은 레벨 3부터 사용 가능 (현재 레벨: %d)"), CurrentWave);
-        return false;
-    }
-    */
-    
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -118,12 +98,10 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         break;
     }
     
-   
     CurrentWeapon = NewWeapon;
     
     AActor* Owner = GetOwner();
     if (Owner == nullptr) return false;
-    
     
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
@@ -162,7 +140,6 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     APawn* OwnerPawn = Cast<APawn>(Owner);
     APFPlayerController* PlayerController = OwnerPawn ? Cast<APFPlayerController>(OwnerPawn->GetController()) : nullptr;
     
-    
     if (PlayerController != nullptr)
     {
         FString NameToShow = TEXT("기본 무기");
@@ -182,7 +159,6 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         PlayerController->UpdateWeaponNameUI(NameToShow);
     }
     
-    
     switch (CurrentWeapon)
     {
     case EWeaponType::Pistol:
@@ -191,13 +167,15 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         AttackDamage = 15.f;
         AttackRange = 3000.f;
         FireRate = 0.25f;
+        bIsAutomatic = false; 
         break;
     case EWeaponType::Rifle:
         MaxAmmo = 30;
         CurrentAmmo = RifleCurrentAmmo;
         AttackDamage = 25.f;
         AttackRange = 5000.f;
-        FireRate = 0.1f;
+        FireRate = 0.1f;       
+        bIsAutomatic = true;  
         break;
     case EWeaponType::Sword:
         MaxAmmo = 5;
@@ -205,9 +183,8 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
         AttackDamage = 100.f;
         AttackRange = 150.f; 
         FireRate = 1.0f;
-        break;
+        bIsAutomatic = false; 
     }
-    
     
     if (PlayerController != nullptr)
     {
@@ -215,6 +192,32 @@ bool UPFCombatComponent::SwitchWeapon(EWeaponType NewWeapon)
     }
 
     return true; 
+}
+
+
+void UPFCombatComponent::StartFire()
+{
+    FireWeapon();
+
+    if (bIsAutomatic && CurrentAmmo > 0)
+    {
+        GetWorld()->GetTimerManager().SetTimer(
+            AutoFireTimerHandle,
+            this,
+            &UPFCombatComponent::FireWeapon,
+            FireRate, 
+            true      
+        );
+    }
+}
+
+
+void UPFCombatComponent::StopFire()
+{
+    if (GetWorld())
+    {
+        GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
+    }
 }
 
 void UPFCombatComponent::AddAmmo(EWeaponType WeaponType, int32 Amount)
@@ -296,37 +299,61 @@ void UPFCombatComponent::ExecuteThrow()
 
 void UPFCombatComponent::FireWeapon()
 {
-    
-    if (!bCanFire || CurrentAmmo <= 0) return;
-    
+    if (CurrentAmmo <= 0)
+    {
+        StopFire(); 
+        return;
+    }
+
+    if (!bIsAutomatic && !bCanFire) return; 
     
     CurrentAmmo--;
-    bCanFire = false;
 
-    GetWorld()->GetTimerManager().SetTimer(
-        FireTimerHandle,
-        this,
-        &UPFCombatComponent::ResetFire,
-        FireRate, 
-        false
-    );
+    if (!bIsAutomatic) 
+    {
+        bCanFire = false;
+        GetWorld()->GetTimerManager().SetTimer(
+            FireTimerHandle,
+            this,
+            &UPFCombatComponent::ResetFire,
+            FireRate, 
+            false
+        );
+    }
 
     AActor* Owner = GetOwner();
 
-    
     ACharacter* Character = Cast<ACharacter>(Owner);
     if (Character && Character->GetMesh())
     {
         UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
         if (AnimInstance)
         {
-            if (CurrentWeapon == EWeaponType::Pistol && PistolFireMontage)
+            
+            if (CurrentWeapon == EWeaponType::Pistol)
             {
-                AnimInstance->Montage_Play(PistolFireMontage, 1.0f);
+                if (PistolFireMontage)
+                {
+                    AnimInstance->Montage_Play(PistolFireMontage, 1.0f);
+                }
+
+                if (PistolFireSound)
+                {
+                    UGameplayStatics::PlaySoundAtLocation(this, PistolFireSound, Character->GetActorLocation());
+                }
             }
-            else if (CurrentWeapon == EWeaponType::Rifle && RifleFireMontage)
+            
+            else if (CurrentWeapon == EWeaponType::Rifle)
             {
-                AnimInstance->Montage_Play(RifleFireMontage, 1.0f);
+                if (RifleFireMontage)
+                {
+                    AnimInstance->Montage_Play(RifleFireMontage, 1.0f);
+                }
+
+                if (RifleFireSound)
+                {
+                    UGameplayStatics::PlaySoundAtLocation(this, RifleFireSound, Character->GetActorLocation());
+                }
             }
             else if (CurrentWeapon == EWeaponType::Sword && SwordMontage)
             {
@@ -335,7 +362,6 @@ void UPFCombatComponent::FireWeapon()
         }
     }
 
-   
     if (Owner)
     {
         if (APawn* OwnerPawn = Cast<APawn>(Owner))
@@ -347,7 +373,6 @@ void UPFCombatComponent::FireWeapon()
         }
     }
 
-    
     if (CurrentWeapon == EWeaponType::Sword)
     {
         return; 
@@ -375,9 +400,24 @@ void UPFCombatComponent::FireWeapon()
        ECC_Visibility,
        CollisionParams
     );
-
-    DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 2.f, 0, 1.f);
-
+    
+    // 총알 방향과 명중 결과가 결정된 뒤 카메라 흔들림
+    if (APFPlayerController* PlayerController =
+        Cast<APFPlayerController>(OwnerPawn->GetController()))
+    {
+        if (FireCameraShakeClass &&
+            PlayerController->IsLocalController())
+        {
+            PlayerController->ClientStartCameraShake(FireCameraShakeClass);
+        }
+    }
+    
+    if (Character && CurrentWeapon != EWeaponType::Sword)
+    {
+        float RecoilAmount = (CurrentWeapon == EWeaponType::Rifle) ? -0.8f : -1.2f;
+        Character->AddControllerPitchInput(RecoilAmount);
+    }
+        
     if (bHit)
     {
         AActor* HitActor = HitResult.GetActor();
@@ -389,32 +429,149 @@ void UPFCombatComponent::FireWeapon()
                 FName HitBoneName = HitResult.BoneName;
                 UPrimitiveComponent* HitComponent = HitResult.GetComponent();
                 bool bWeakPointHit = false;
-
                 
+                bool bHitHeadBoxLocation = false;
+
+                const TArray<UActorComponent*> HeadBoxComponents =
+                    Monster->GetComponentsByTag(
+                        UBoxComponent::StaticClass(),
+                        TEXT("HeadHitBox")
+                    );
+
+                for (UActorComponent* Component : HeadBoxComponents)
+                {
+                    const UBoxComponent* HeadBox =
+                        Cast<UBoxComponent>(Component);
+
+                    if (!HeadBox)
+                    {
+                        continue;
+                    }
+
+                    const FVector LocalHitLocation =
+                        HeadBox->GetComponentTransform()
+                            .InverseTransformPosition(
+                                HitResult.ImpactPoint
+                            );
+
+                    const FVector Extent =
+                        HeadBox->GetUnscaledBoxExtent() +
+                        FVector(2.f);
+
+                    bHitHeadBoxLocation =
+                        FMath::Abs(LocalHitLocation.X) <= Extent.X &&
+                        FMath::Abs(LocalHitLocation.Y) <= Extent.Y &&
+                        FMath::Abs(LocalHitLocation.Z) <= Extent.Z;
+
+                    if (bHitHeadBoxLocation)
+                    {
+                        break;
+                    }
+                }
+                
+                // 머리 본 또는 머리 전용 박스를 맞혔는지 확인
+                const bool bHitHeadBox =
+                    HitComponent &&
+                    HitComponent->ComponentHasTag(TEXT("HeadHitBox"));
+
+                const bool bHeadShot =
+                    HitBoneName == TEXT("Head") ||
+                        bHitHeadBox ||
+                        bHitHeadBoxLocation;
+                
+                // 머리 박스를 맞힌 경우 피격 리액션용 본을 Head로 지정
+                const FName ReactionBoneName =
+                     bHeadShot ? FName(TEXT("Head")) : HitBoneName;
+                
+                UE_LOG(
+                LogTemp,
+                Warning,
+                TEXT(
+                "[HeadCheck] Boxes: %d / DirectBox: %d / LocationBox: %d / HeadShot: %d / Component: %s / Bone: %s"
+                ),
+                HeadBoxComponents.Num(),
+                bHitHeadBox,
+                bHitHeadBoxLocation,
+                bHeadShot,
+                *GetNameSafe(HitComponent),
+                *HitBoneName.ToString()
+                );
+
                 if (APFSuicideZombie* SuicideZombie = Cast<APFSuicideZombie>(Monster))
                 {
-                    if (SuicideZombie->IsWeakPointComponent(HitComponent))
+                    const bool bHitWeakPointComponent =
+                    SuicideZombie->IsWeakPointComponent(HitComponent);
+
+                    const bool bHitWeakPointLocation =
+                        SuicideZombie->IsWeakPointLocation(
+                            HitResult.ImpactPoint
+                        );
+
+                    if (bHitWeakPointComponent || bHitWeakPointLocation)
                     {
-                        UE_LOG(LogTemp, Warning, TEXT("자폭 좀비 약점 명중"));
-                        SuicideZombie->TriggerWeakPointExplosion(); 
-                        bWeakPointHit = true; 
+                        UE_LOG(
+                            LogTemp,
+                            Warning,
+                            TEXT(
+                                "자폭 좀비 약점 명중 / Component: %s / LocationCheck: %d"
+                            ),
+                            *GetNameSafe(HitComponent),
+                            bHitWeakPointLocation
+                        );
+
+                        SuicideZombie->TriggerWeakPointExplosion();
+                        bWeakPointHit = true;
                     }
                 }
 
-                // 약점이 아닌 경우 일반/헤드샷 데미지 처리
                 if (!bWeakPointHit) 
                 {
-                    if (HitBoneName == TEXT("head"))
+                    // 총알이 날아간 방향
+                    const FVector HitDirection =
+                        (HitResult.ImpactPoint - StartLocation).GetSafeNormal();
+                    
+                    if (bHeadShot)
                     {
-                        UE_LOG(LogTemp, Warning, TEXT("🎯 헤드샷 크리티컬 히트!!"));
-                        Monster->TakeDamageFromMonster(AttackDamage * 2.0f, Owner);
+                        UE_LOG(
+                            LogTemp,
+                            Warning,
+                            TEXT("[Combat] Head Shot / Component: %s / Bone: %s"),
+                            *GetNameSafe(HitComponent),
+                            *HitBoneName.ToString()
+                        );
+
+                        Monster->TakeDamageFromMonster(
+                            AttackDamage * 2.f,
+                            Owner
+                        );
                     }
                     else
                     {
-                        Monster->TakeDamageFromMonster(AttackDamage, Owner);
+                        Monster->TakeDamageFromMonster(
+                            AttackDamage,
+                            Owner
+                        );
                     }
-                }
+                    
+                    // 총알 피해로 죽지 않은 경우에만 맞은 부위 흔들기
+                    if (!Monster->IsMonsterDead())
+                    {
+                        Monster->ApplyBulletHitReaction(
+                            ReactionBoneName,
+                            HitDirection
+                        );
+                    }
 
+                    UE_LOG(
+                        LogTemp,
+                        Warning,
+                        TEXT("[Combat] Hit Reaction / Component: %s / Bone: %s"),
+                        *GetNameSafe(HitComponent),
+                        *HitBoneName.ToString()
+                    );
+                
+                }
+                
                 if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerPawn->GetController()))
                 {
                     PlayerController->ShowHitMarker();

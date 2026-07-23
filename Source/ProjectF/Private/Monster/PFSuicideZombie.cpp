@@ -17,76 +17,78 @@
 #include "Components/BoxComponent.h"
 
 #include "NiagaraFunctionLibrary.h"
-#include "NiagaraSystem.h"
+//#include "NiagaraSystem.h"
 
 
 APFSuicideZombie::APFSuicideZombie()
 {
 
 	PrimaryActorTick.bCanEverTick = false;
-	
+
 	// ===== Suicide Zombie Status =====
 	MaxHP = 80.f;
-
-	// 플레이어 가까이까지 접근
 	AttackRange = 180.f;
-
-	// 추적 속도
 	WalkSpeed = 400.f;
-
-	// 일반 공격은 사용하지 않지만 기본값은 남겨둔다.
 	AttackDamage = 0.f;
-	
-	// =====================================================
-	// Weak Point - Abdomen
-	// =====================================================
 
+	// 두 약점에 공통으로 적용할 충돌 설정
+	auto ConfigureWeakPoint =
+		[](UBoxComponent* WeakPoint)
+		{
+			if (!WeakPoint)
+			{
+				return;
+			}
+
+			WeakPoint->SetBoxExtent(
+				FVector(20.f, 20.f, 20.f)
+			);
+
+			WeakPoint->SetCollisionEnabled(
+				ECollisionEnabled::QueryOnly
+			);
+
+			WeakPoint->SetCollisionObjectType(
+				ECC_WorldDynamic
+			);
+
+			WeakPoint->SetCollisionResponseToAllChannels(
+				ECR_Ignore
+			);
+
+			WeakPoint->SetCollisionResponseToChannel(
+				ECC_Visibility,
+				ECR_Block
+			);
+
+			WeakPoint->SetGenerateOverlapEvents(false);
+		};
+
+	// ===== Weak Point - Abdomen =====
 	WeakPointCollision =
-		CreateDefaultSubobject<UBoxComponent>(TEXT("WeakPointCollision"));
+		CreateDefaultSubobject<UBoxComponent>(
+			TEXT("WeakPointCollision")
+		);
 
 	WeakPointCollision->SetupAttachment(
 		GetMesh(),
 		TEXT("WeakPointSocket")
 	);
 
-	WeakPointCollision->SetBoxExtent(FVector(20.f, 20.f, 20.f));
+	ConfigureWeakPoint(WeakPointCollision);
 
-	WeakPointCollision->SetCollisionEnabled(
-		ECollisionEnabled::QueryOnly
-	);
-
-	WeakPointCollision->SetCollisionObjectType(ECC_WorldDynamic);
-	WeakPointCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	WeakPointCollision->SetCollisionResponseToChannel(
-		ECC_Visibility,
-		ECR_Block
-	);
-
-
-	// =====================================================
-	// Weak Point - Chest
-	// =====================================================
-
+	// ===== Weak Point - Chest =====
 	WeakPointCollision2 =
-		CreateDefaultSubobject<UBoxComponent>(TEXT("WeakPointCollision2"));
+		CreateDefaultSubobject<UBoxComponent>(
+			TEXT("WeakPointCollision2")
+		);
 
 	WeakPointCollision2->SetupAttachment(
 		GetMesh(),
-		TEXT("WeakPointSocket2")
+		TEXT("Spine2")
 	);
 
-	WeakPointCollision2->SetBoxExtent(FVector(20.f, 20.f, 20.f));
-
-	WeakPointCollision2->SetCollisionEnabled(
-		ECollisionEnabled::QueryOnly
-	);
-
-	WeakPointCollision2->SetCollisionObjectType(ECC_WorldDynamic);
-	WeakPointCollision2->SetCollisionResponseToAllChannels(ECR_Ignore);
-	WeakPointCollision2->SetCollisionResponseToChannel(
-		ECC_Visibility,
-		ECR_Block
-	);
+	ConfigureWeakPoint(WeakPointCollision2);
 }
 
 
@@ -97,14 +99,6 @@ void APFSuicideZombie::BeginPlay()
 	bIsExploding = false;
 	bHasExploded = false;
 	bIsCorpseBomb = false;
-
-	UE_LOG(
-		LogTemp,
-		Warning,
-		TEXT("[SuicideZombie] BeginPlay / Radius: %f / Damage: %f"),
-		ExplosionRadius,
-		ExplosionDamage
-		);
 	
 }
 
@@ -450,13 +444,7 @@ void APFSuicideZombie::TriggerWeakPointExplosion()
 	{
 		return;
 	}
-
-	UE_LOG(
-		LogTemp,
-		Warning,
-		TEXT("[SuicideZombie] Weak Point Hit")
-	);
-
+	
 	Explode();
 }
 
@@ -466,4 +454,37 @@ bool APFSuicideZombie::IsWeakPointComponent(
 {
 	return HitComponent == WeakPointCollision ||
 		   HitComponent == WeakPointCollision2;
+}
+
+bool APFSuicideZombie::IsWeakPointLocation(
+	const FVector& WorldLocation
+) const
+{
+	auto IsInsideWeakPoint =
+		[&WorldLocation](const UBoxComponent* WeakPoint)
+		{
+			if (!WeakPoint)
+			{
+				return false;
+			}
+
+			// 총알 충돌 위치를 박스의 로컬 좌표로 변환
+			const FVector LocalLocation =
+				WeakPoint->GetComponentTransform()
+				.InverseTransformPosition(WorldLocation);
+
+			// 피부 표면과 박스 사이의 작은 오차 허용
+			const FVector Extent =
+				WeakPoint->GetUnscaledBoxExtent() +
+				FVector(8.f);
+
+			return
+				FMath::Abs(LocalLocation.X) <= Extent.X &&
+				FMath::Abs(LocalLocation.Y) <= Extent.Y &&
+				FMath::Abs(LocalLocation.Z) <= Extent.Z;
+		};
+
+	return
+		IsInsideWeakPoint(WeakPointCollision) ||
+		IsInsideWeakPoint(WeakPointCollision2);
 }
