@@ -2,25 +2,36 @@
 
 
 #include "GameManager/PFPortalActor.h"
+#include "Monster/PFMonsterCharacter.h"
 
 
-// Sets default values
+
 APFPortalActor::APFPortalActor()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+
+	// 루트 컴포넌트 변수 생성 및 등록
+	PortalMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PortalMesh"));
+	RootComponent = PortalMesh;
 }
 
-// Called when the game starts or when spawned
-void APFPortalActor::BeginPlay()
+
+
+
+
+void APFPortalActor :: SpawnMonster(TSubclassOf<APawn> MonsterClass, bool bIsBoss)
 {
-	Super::BeginPlay();
-	
-}
+	if (MonsterClass == nullptr) return;
 
-// Called every frame
-void APFPortalActor::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
+	FVector SpawnLocation = GetActorLocation();
+	FRotator SpawnRotation = GetActorRotation();
 
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	APawn* SpawnedPawn = GetWorld()->SpawnActor<APawn>(MonsterClass, SpawnLocation, SpawnRotation, SpawnParams);
+	if (APFMonsterCharacter* SpawnedMonster = Cast<APFMonsterCharacter>(SpawnedPawn))
+	{
+		SpawnedMonster->bIsBoss = bIsBoss;
+	}
+}

@@ -12,14 +12,17 @@ class PROJECTF_API APFPortalActor : public AActor
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
+	
 	APFPortalActor();
-
+	
+	void SpawnMonster(TSubclassOf<APawn> MonsterClass,bool bIsBoss);
+	
+	
+	
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UStaticMeshComponent* PortalMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Portal")
+	bool bIsBossPortal = false;
 };

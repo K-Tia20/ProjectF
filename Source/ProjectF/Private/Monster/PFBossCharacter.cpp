@@ -1,32 +1,969 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+
 
 
 #include "Monster/PFBossCharacter.h"
 
+#include "Monster/PFMonsterAIController.h"
+#include "NavigationSystem.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "AI/Navigation/NavigationTypes.h"
+#include "Monster/PFBasicZombie.h"
 
-// Sets default values
+
+
 APFBossCharacter::APFBossCharacter()
 {
-	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	bIsBoss = true;
+	
+	// 보스는 스폰 위치로 돌아가지 않는다.
+	BReturnToSpawnLocation = false;
+
+	// ===== Boss Status =====
+	MaxHP = 800.f;
+	CurrentHP = MaxHP;
+
+	AttackDamage = 50.f;
+	AttackRange = 220.f;
+	AttackCooldown = 1.8f;
+
+	// ===== Boss Detect =====
+	DetectRange = 2500.f;
+	SightAngle = 120.f;
+	RequiredDetectTime = 0.3f;
+
+	// ===== Boss Move =====
+	WalkSpeed = 850.f;
+	MoveAcceptanceRadius = 80.f;
+
+	// ===== Boss Armor =====
+	MaxArmor = 100.f;
+	CurrentArmor = MaxArmor;
+	ArmorDamageReductionRate = 0.7f;
+
+	// ===== Boss Search =====
+	SearchRadius = 800.f;
+	SearchInterval = 2.0f;
+	BInfiniteSearch = true;
+	MaxSearchCount = 5;
+	CurrentSearchCount = 0;
+	BIsSearching = false;
+
+	// ===== Boss Phase =====
+	BossPhase = 1;
+	Phase2HPRatio = 0.5f;
+	BIsPhase2 = false;
+
+	// ===== Boss Pattern =====
+	BIsUsingPattern = false;
+	RoarSummonCooldown = 10.f;
+	SummonCount = 3;
+	SummonRadius = 600.f;
 }
 
-// Called when the game starts or when spawned
 void APFBossCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// BP에서 값이 바뀌었을 수 있으니 BeginPlay에서 다시 초기화
+	BReturnToSpawnLocation = false;
+
+	CurrentHP = MaxHP;
+	CurrentArmor = MaxArmor;
+
+	BossPhase = 1;
+	BIsPhase2 = false;
+
+	BIsSearching = false;
+	CurrentSearchCount = 0;
+
+	BIsUsingPattern = false;
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		// 최고속도 850
+		Movement->MaxWalkSpeed = WalkSpeed;
+
+		/*
+		 * 1초에 약 450씩 속도가 증가한다.
+		 * 
+		 */
+		Movement->MaxAcceleration = 450.f;
+
+		// 정지할 때의 감속도
+		Movement->BrakingDecelerationWalking = 600.f;
+
+		/*
+		 * AI의 MoveTo도 즉시 최고속도로 이동하지 않고
+		 * CharacterMovement의 가속도를 사용하게 한다.
+		 */
+		if (FNavMovementProperties* NavProperties = Movement->GetNavMovementProperties())
+		{
+			NavProperties->bUseAccelerationForPaths = true;
+			
+			// 목표 지점 10cm 전부터만 감속
+			NavProperties->bUseFixedBrakingDistanceForPaths = true;
+			NavProperties->FixedPathBrakingDistance = 10.f;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] BeginPlay / HP: %f / Armor: %f"), CurrentHP, CurrentArmor);
+}
+
+
+// =====================================================
+// Damage / Armor
+// =====================================================
+
+void APFBossCharacter::TakeDamageFromMonster(float DamageAmount, AActor* DamageCauser)
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	float FinalDamage = DamageAmount;
+
+	// 방어도가 남아있으면 데미지 감소
+	if (CurrentArmor > 0.f)
+	{
+		const float ClampedReductionRate = FMath::Clamp(ArmorDamageReductionRate, 0.f, 0.95f);
+		FinalDamage = DamageAmount * (1.f - ClampedReductionRate);
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Hit / OriginalDamage: %f / FinalDamage: %f / Armor: %f"),
+		DamageAmount,
+		FinalDamage,
+		CurrentArmor
+	);
+
+	Super::TakeDamageFromMonster(FinalDamage, DamageCauser);
+
+	UpdateBossPhase();
+}
+
+void APFBossCharacter::TakeArmorDamage(float ArmorDamageAmount)
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	if (ArmorDamageAmount <= 0.f)
+	{
+		return;
+	}
+	
+	const bool BWasArmorBroken = IsArmorBroken();
+
+	CurrentArmor = FMath::Clamp(CurrentArmor - ArmorDamageAmount, 0.f, MaxArmor);
+	
+	const bool bIsNowArmorBroken = IsArmorBroken();
+	
+	// 방어도가 이번 공격으로 완전히 깨지지 않았다면 일반 피격음
+	if (!bIsNowArmorBroken && ArmorHitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ArmorHitSound,
+			GetActorLocation()
+		);
+	}
+	
+	if (!BWasArmorBroken && bIsNowArmorBroken)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Boss] Armor Broken"));
+
+		if (ArmorBreakSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				ArmorBreakSound,
+				GetActorLocation()
+			);
+		}
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Armor Damaged / ArmorDamage: %f / CurrentArmor: %f"),
+		ArmorDamageAmount,
+		CurrentArmor
+	);
+
+	if (!BWasArmorBroken && IsArmorBroken())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Boss] Armor Broken"));
+		
+		if (ArmorBreakSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				ArmorBreakSound,
+				GetActorLocation()
+			);
+		}
+	}
+}
+
+bool APFBossCharacter::IsArmorBroken() const
+{
+	return CurrentArmor <= 0.f;
+}
+
+void APFBossCharacter::OnDamaged(AActor* DamageCauser)
+{
+	// APFBasicZombie의 피격 시 즉시 추적 로직 사용
+	Super::OnDamaged(DamageCauser);
+
+	// 맞았으면 수색 중단
+	StopSearch();
+
+	UpdateBossPhase();
+
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] OnDamaged"));
+}
+
+
+// =====================================================
+// Search
+// =====================================================
+
+void APFBossCharacter::HandleAfterReachedLastKnownLocation()
+{
+	// 일반 좀비는 여기서 SpawnLocation으로 돌아가지만,
+	// 보스는 마지막으로 본 위치 주변을 계속 수색한다.
+	StartSearchAroundLastKnownLocation();
+}
+
+void APFBossCharacter::StartSearchAroundLastKnownLocation()
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	if (TargetActor)
+	{
+		return;
+	}
+
+	BIsSearching = true;
+	CurrentSearchCount = 0;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] Start Search Around LastKnownLocation"));
+
+	MoveToRandomSearchLocation();
+
+	GetWorldTimerManager().ClearTimer(SearchTimerHandle);
+
+	GetWorldTimerManager().SetTimer(
+		SearchTimerHandle,
+		this,
+		&APFBossCharacter::MoveToRandomSearchLocation,
+		SearchInterval,
+		true
+	);
+}
+
+void APFBossCharacter::MoveToRandomSearchLocation()
+{
+	if (IsDead)
+	{
+		StopSearch();
+		return;
+	}
+
+	// 수색 중 플레이어를 다시 찾았으면 수색 중단
+	if (TargetActor)
+	{
+		StopSearch();
+		return;
+	}
+
+	if (!BInfiniteSearch && CurrentSearchCount >= MaxSearchCount)
+	{
+		StopSearch();
+		return;
+	}
+
+	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Boss] NavSystem is null"));
+		return;
+	}
+
+	FNavLocation RandomLocation;
+
+	const bool BFoundLocation = NavSystem->GetRandomReachablePointInRadius(
+		LastKnownLocation,
+		SearchRadius,
+		RandomLocation
+	);
+
+	if (!BFoundLocation)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Boss] Failed To Find Search Location"));
+		return;
+	}
+
+	CurrentSearchLocation = RandomLocation.Location;
+
+	AAIController* AIController = Cast<AAIController>(GetController());
+
+	if (!AIController)
+	{
+		return;
+	}
+
+	AIController->MoveToLocation(
+		CurrentSearchLocation,
+		MoveAcceptanceRadius
+	);
+
+	CurrentSearchCount++;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Move To Search Location / Count: %d / Location: %s"),
+		CurrentSearchCount,
+		*CurrentSearchLocation.ToString()
+	);
+}
+
+void APFBossCharacter::StopSearch()
+{
+	if (!BIsSearching)
+	{
+		GetWorldTimerManager().ClearTimer(SearchTimerHandle);
+		return;
+	}
+
+	BIsSearching = false;
+	CurrentSearchCount = 0;
+
+	GetWorldTimerManager().ClearTimer(SearchTimerHandle);
+
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] Stop Search"));
+}
+
+
+// =====================================================
+// Phase
+// =====================================================
+
+void APFBossCharacter::UpdateBossPhase()
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	if (BIsPhase2)
+	{
+		return;
+	}
+
+	if (MaxHP <= 0.f)
+	{
+		return;
+	}
+
+	const float HPRatio = CurrentHP / MaxHP;
+
+	if (HPRatio > Phase2HPRatio)
+	{
+		return;
+	}
+
+	BIsPhase2 = true;
+	BossPhase = 2;
+	
+	if (Phase2Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			Phase2Sound,
+			GetActorLocation()
+		);
+	}
+
+	// 2페이즈 강화
+	WalkSpeed += 150.f;
+	AttackCooldown = FMath::Max(0.8f, AttackCooldown * 0.7f);
+	SearchInterval = FMath::Max(1.0f, SearchInterval * 0.7f);
+	RoarSummonCooldown = FMath::Max(5.0f, RoarSummonCooldown * 0.7f);
+
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Phase 2 Start / WalkSpeed: %f / AttackCooldown: %f"),
+		WalkSpeed,
+		AttackCooldown
+	);
+}
+
+
+// =====================================================
+// Pattern - Summon
+// 지금은 자리만 잡아둠. 실제 소환은 다음 단계에서 구현.
+// =====================================================
+
+void APFBossCharacter::StartRoarSummonPattern()
+{
+	if (IsDead || BIsUsingPattern || !CanAttack)
+	{
+		return;
+	}
+
+	BIsUsingPattern = true;
+	bIsAttacking = true;
+	CanAttack = false;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Roar Summon Pattern Start")
+	);
+
+	// AI 이동 정지
+	if (AController* BossController = GetController())
+	{
+		BossController->StopMovement();
+	}
+
+	// 캐릭터 이동 정지
+	if (UCharacterMovementComponent* Movement =
+		GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 포효 공통 사운드
+	PlayRoarSound();
+
+	// 포효 소환 몽타주 재생
+	if (RoarSummonMontage)
+	{
+		const float MontageDuration =
+			PlayAnimMontage(RoarSummonMontage);
+
+		if (MontageDuration > 0.f)
+		{
+			return;
+		}
+	}
+
+	// 몽타주가 없거나 재생 실패한 경우 바로 소환
+	HandleRoarSummonNotify();
+}
+
+void APFBossCharacter::SummonMinions()
+{
+	if (IsDead || !SummonMonsterClass || !GetWorld())
+	{
+		return;
+	}
+	
+	// 이번 소환 패턴의 몬스터만 새로 저장한다.
+	CurrentSummonedMinions.Reset();
+
+	UNavigationSystemV1* NavSystem =
+		UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[Boss] Navigation System Not Found")
+		);
+
+		return;
+	}
+
+	int32 SpawnedCount = 0;
+
+	// 일부 위치에서 소환에 실패할 수 있으므로
+	// 소환 개수보다 더 많이 위치를 시도한다.
+	const int32 MaxSpawnAttempts = SummonCount * 5;
+
+	for (int32 Attempt = 0;
+		 Attempt < MaxSpawnAttempts &&
+		 SpawnedCount < SummonCount;
+		 ++Attempt)
+	{
+		FNavLocation RandomNavLocation;
+
+		const bool bFoundLocation =
+			NavSystem->GetRandomReachablePointInRadius(
+				GetActorLocation(),
+				SummonRadius,
+				RandomNavLocation
+			);
+
+		if (!bFoundLocation)
+		{
+			continue;
+		}
+
+		FVector MinionSpawnLocation = RandomNavLocation.Location;
+
+		// 땅에 너무 박히는 것을 방지
+		MinionSpawnLocation.Z += 20.f;
+
+		// 보스 쪽을 바라보도록 회전
+		const FRotator SpawnRotation =
+			(GetActorLocation() - MinionSpawnLocation).Rotation();
+
+		FActorSpawnParameters SpawnParams;
+
+		SpawnParams.Owner = this;
+
+		SpawnParams.SpawnCollisionHandlingOverride =
+			ESpawnActorCollisionHandlingMethod::
+			AdjustIfPossibleButDontSpawnIfColliding;
+
+		APFBasicZombie* SpawnedMonster =
+			GetWorld()->SpawnActor<APFBasicZombie>(
+				SummonMonsterClass,
+				MinionSpawnLocation,
+				SpawnRotation,
+				SpawnParams
+			);
+
+		if (!SpawnedMonster)
+		{
+			continue;
+		}
+		
+		// 보스가 이후 명령을 내릴 수 있도록 저장
+		CurrentSummonedMinions.Add(SpawnedMonster);
+
+		++SpawnedCount;
+
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Minion Spawned: %s / %d of %d"),
+			*SpawnedMonster->GetName(),
+			SpawnedCount,
+			SummonCount
+		);
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Summon Finished / Spawned: %d of %d"),
+		SpawnedCount,
+		SummonCount
+	);
+	// 소환된 몬스터들을 플레이어 주변으로 분산
+	CommandSummonedMinionsByStrategy();
 	
 }
 
-// Called every frame
-void APFBossCharacter::Tick(float DeltaTime)
+void APFBossCharacter::EndPattern()
 {
-	Super::Tick(DeltaTime);
+	BIsUsingPattern = false;
+	bIsAttacking = false;
+	CanAttack = true;
+
+	if (!IsDead)
+	{
+		if (UCharacterMovementComponent* Movement =
+			GetCharacterMovement())
+		{
+			Movement->SetMovementMode(MOVE_Walking);
+		}
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Pattern End")
+	);
+	
 }
 
-// Called to bind functionality to input
-void APFBossCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void APFBossCharacter::OnTargetAcquired(AActor* NewTarget)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	Super::OnTargetAcquired(NewTarget);
+
+	if (IsDead ||
+		BIsUsingPattern ||
+		!CanAttack)
+	{
+		return;
+	}
+
+	// 소환 쿨타임이 준비된 경우에만 발견 즉시 포효
+	if (bCanRoarSummon && SummonMonsterClass)
+	{
+		Attack();
+	}
 }
 
+void APFBossCharacter::ResetRoarSummonCooldown()
+{
+	if (IsDead)
+	{
+		return;
+	}
+
+	bCanRoarSummon = true;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Roar Summon Ready")
+	);
+	
+	// 쿨타임이 끝나는 순간 소환 시도
+	TryStartReadyRoarSummon();
+	
+}
+
+void APFBossCharacter::TryStartReadyRoarSummon()
+{
+	GetWorldTimerManager().ClearTimer(
+		RoarSummonRetryTimerHandle
+	);
+
+	// 플레이어를 추적 중이 아니거나 소환 준비가 안 됐으면 종료
+	if (IsDead ||
+		!bCanRoarSummon ||
+		!SummonMonsterClass ||
+		!IsValid(TargetActor))
+	{
+		return;
+	}
+
+	/*
+	 * 주먹 공격이나 다른 패턴 도중에는 포효를 끼워 넣지 않는다.
+	 * 0.2초 뒤 다시 확인한다.
+	 */
+	if (BIsUsingPattern ||
+		bIsAttacking ||
+		!CanAttack)
+	{
+		GetWorldTimerManager().SetTimer(
+			RoarSummonRetryTimerHandle,
+			this,
+			&APFBossCharacter::TryStartReadyRoarSummon,
+			0.2f,
+			false
+		);
+
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Use Ready Roar Summon")
+	);
+
+	// 보스 Attack()에서 소환 패턴을 선택
+	Attack();
+}
+
+void APFBossCharacter::HandleRoarSummonNotify()
+{
+	// 이미 패턴이 끝났거나 죽었다면 중복 소환 방지
+	if (IsDead || !BIsUsingPattern)
+	{
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Roar Summon Notify")
+	);
+
+	// 자폭몹이 나타나는 순간 소환 사운드 재생
+	if (SummonSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			SummonSound,
+			GetActorLocation()
+		);
+	}
+
+	SummonMinions();
+	EndPattern();
+}
+
+void APFBossCharacter::CommandSummonedMinionsToSurround()
+{
+	if (IsDead ||
+		!IsValid(TargetActor) ||
+		CurrentSummonedMinions.IsEmpty())
+	{
+		return;
+	}
+
+	UNavigationSystemV1* NavSystem =
+		UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+	{
+		UE_LOG(
+		LogTemp,
+		Error,
+		TEXT("[Boss] Surround Failed - Switch All To Rush")
+		);
+		
+		CommandSummonedMinionsToRush();
+		return;
+	}
+
+	const FVector PlayerLocation =
+		TargetActor->GetActorLocation();
+
+	const int32 MinionCount =
+		CurrentSummonedMinions.Num();
+
+	// 매번 완전히 같은 방향으로 포위하지 않도록 시작 각도를 무작위로 지정
+	const float StartAngle =
+		FMath::FRandRange(0.f, 360.f);
+
+	for (int32 Index = 0; Index < MinionCount; ++Index)
+	{
+		APFBasicZombie* Minion =
+			CurrentSummonedMinions[Index];
+
+		if (!IsValid(Minion) ||
+			Minion->IsMonsterDead())
+		{
+			continue;
+		}
+
+		// 3마리면 120도, 4마리면 90도 간격
+		const float AngleInterval =
+			360.f / static_cast<float>(MinionCount);
+
+		const float CommandAngle =
+			StartAngle + AngleInterval * Index;
+
+		const FVector SurroundDirection =
+			FRotator(
+				0.f,
+				CommandAngle,
+				0.f
+			).Vector();
+
+		const FVector DesiredLocation =
+			PlayerLocation +
+			SurroundDirection * MinionSurroundRadius;
+
+		FNavLocation CommandNavLocation;
+
+		// 계산된 포위 지점을 실제 이동 가능한 NavMesh 위치로 보정
+		const bool bFoundCommandLocation =
+			NavSystem->ProjectPointToNavigation(
+				DesiredLocation,
+				CommandNavLocation,
+				FVector(200.f, 200.f, 300.f)
+			);
+
+		if (!bFoundCommandLocation)
+		{
+			UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Surround Location Failed / Index: %d / Switch To Rush"),
+			Index
+			);
+			
+			// 해당 몬스터만 즉시 돌격
+			Minion->ReceiveBossRushCommand(TargetActor);
+			continue;
+		}
+
+		Minion->ReceiveBossMoveCommand(
+			CommandNavLocation.Location,
+			TargetActor
+		);
+
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Surround Command / Minion: %s / Location: %s"),
+			*Minion->GetName(),
+			*CommandNavLocation.Location.ToString()
+		);
+	}
+}
+
+//전체 돌격
+void APFBossCharacter::CommandSummonedMinionsToRush()
+{
+	if (IsDead || !IsValid(TargetActor))
+	{
+		return;
+	}
+
+	for (APFBasicZombie* Minion :
+		CurrentSummonedMinions)
+	{
+		if (!IsValid(Minion) ||
+			Minion->IsMonsterDead())
+		{
+			continue;
+		}
+
+		Minion->ReceiveBossRushCommand(TargetActor);
+	}
+}
+
+//전략 선택 함수
+void APFBossCharacter::CommandSummonedMinionsByStrategy()
+{
+	if (IsDead ||
+		!IsValid(TargetActor) ||
+		CurrentSummonedMinions.IsEmpty())
+	{
+		return;
+	}
+
+	const float TargetSpeed =
+		TargetActor->GetVelocity().Size2D();
+
+	/*
+	 * 플레이어가 빠르게 이동 중이면
+	 * 현재 위치 기준 포위 지점이 금방 낡아버리므로 즉시 돌격한다.
+	 *
+	 * 플레이어가 느리거나 멈춰 있으면 포위한다.
+	 */
+	const bool bShouldRush =
+		TargetSpeed >= DirectRushSpeedThreshold ||
+		CurrentSummonedMinions.Num() < 2;
+
+	if (bShouldRush)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Boss] Strategy: Direct Rush / PlayerSpeed: %f"),
+			TargetSpeed
+		);
+
+		CommandSummonedMinionsToRush();
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[Boss] Strategy: Surround / PlayerSpeed: %f"),
+		TargetSpeed
+	);
+
+	CommandSummonedMinionsToSurround();
+}
+
+// =====================================================
+// Pattern - Future
+// =====================================================
+
+void APFBossCharacter::StartChargePattern()
+{
+	// 나중에 돌진 패턴 구현 예정
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] Charge Pattern - Not Implemented Yet"));
+}
+
+void APFBossCharacter::StartRangedAttackPattern()
+{
+	// 나중에 원거리 패턴 구현 예정
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] Ranged Attack Pattern - Not Implemented Yet"));
+}
+
+
+// =====================================================
+// Dead
+// =====================================================
+
+void APFBossCharacter::Die()
+{
+	GetWorldTimerManager().ClearTimer(SearchTimerHandle);
+	GetWorldTimerManager().ClearTimer(RoarSummonTimerHandle);
+	GetWorldTimerManager().ClearTimer(RoarSummonRetryTimerHandle);
+
+	BIsSearching = false;
+	BIsUsingPattern = false;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Boss] Die"));
+		
+	Super::Die();
+}
+
+// =====================================================
+// Attack pattern
+// =====================================================
+
+void APFBossCharacter::Attack()
+{
+	if (IsDead || BIsUsingPattern || bIsAttacking || !CanAttack)
+	{
+		return;
+	}
+
+	// 소환할 클래스가 지정되어 있고 쿨타임이 준비됐으면 소환
+	if (bCanRoarSummon && SummonMonsterClass)
+	{
+		bCanRoarSummon = false;
+
+		StartRoarSummonPattern();
+
+		GetWorldTimerManager().SetTimer(
+			RoarSummonTimerHandle,
+			this,
+			&APFBossCharacter::ResetRoarSummonCooldown,
+			RoarSummonCooldown,
+			false
+		);
+
+		return;
+	}
+
+	// 소환 쿨타임 중에는 기존 주먹 공격
+	Super::Attack();
+}
+
+void APFBossCharacter::PlayDamageSound()
+{
+	// 방어도가 남아 있을 때는 일반 피격음 대신 방어도 피격음
+	if (CurrentArmor > 0.f)
+	{
+		if (ArmorHitSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				ArmorHitSound,
+				GetActorLocation()
+			);
+		}
+
+		return;
+	}
+
+	// 방어도가 깨진 뒤에는 부모의 일반 HitSound 재생
+	Super::PlayDamageSound();
+}

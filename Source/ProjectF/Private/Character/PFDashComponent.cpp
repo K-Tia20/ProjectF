@@ -1,36 +1,92 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+#include "Character/PFDashComponent.h" 
+#include "GameFramework/Character.h"
+#include "TimerManager.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h" 
+#include "GameManager/PFPlayerController.h"
 
-
-#include "Character/PFDashComponent.h"
-
-
-// Sets default values for this component's properties
 UPFDashComponent::UPFDashComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
-
-// Called when the game starts
 void UPFDashComponent::BeginPlay()
 {
-	Super::BeginPlay();
-
-	// ...
-	
+    Super::BeginPlay();
 }
 
-
-// Called every frame
-void UPFDashComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                     FActorComponentTickFunction* ThisTickFunction)
+void UPFDashComponent::ExecuteDash()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    if (!bCanDash) return;
 
-	// ...
+    ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+    if (!OwnerCharacter) return;
+
+    
+    FVector DashDirection = OwnerCharacter->GetLastMovementInputVector();
+    if (DashDirection.IsNearlyZero())
+    {
+       DashDirection = OwnerCharacter->GetActorForwardVector();
+    }
+    DashDirection.Normalize();
+
+   
+    OwnerCharacter->LaunchCharacter(DashDirection * DashImpulse, true, true);
+
+    
+    if (DashNiagaraVFX && OwnerCharacter->GetMesh())
+    {
+       UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
+          DashNiagaraVFX,
+          OwnerCharacter->GetMesh(),
+          NAME_None,
+          FVector::ZeroVector,
+          FRotator::ZeroRotator,
+          EAttachLocation::SnapToTargetIncludingScale,
+          true,  
+          true   
+       );
+
+       if (NiagaraComp)
+       {
+          
+          TWeakObjectPtr<UNiagaraComponent> WeakNiagara = NiagaraComp;
+
+          FTimerHandle VFXTimerHandle;
+          GetWorld()->GetTimerManager().SetTimer(
+             VFXTimerHandle,
+             [WeakNiagara]()
+             {
+                
+                if (WeakNiagara.IsValid())
+                {
+                   WeakNiagara->Deactivate();
+                }
+             },
+             0.6f, 
+             false
+          );
+       }
+    }
+
+    
+   bCanDash = false;
+   
+   if (APFPlayerController* PlayerController = Cast<APFPlayerController>(OwnerCharacter->GetController()))
+   {
+      PlayerController->UpdateDashCooldownUI(DashCooldown);
+   }
+
+   GetWorld()->GetTimerManager().SetTimer(
+       DashTimerHandle,
+       this,
+       &UPFDashComponent::ResetDash,
+       DashCooldown,
+       false
+   );
 }
 
+void UPFDashComponent::ResetDash()
+{
+   bCanDash = true;
+}

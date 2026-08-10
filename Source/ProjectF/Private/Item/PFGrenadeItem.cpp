@@ -1,26 +1,18 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Item/PFGrenadeItem.h"
+#include "Character/PFPlayerCharacter.h"
+#include "Character/PFCombatComponent.h"
 
 
-// Sets default values
-APFGrenadeItem::APFGrenadeItem()
+
+void APFGrenadeItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	if (PlayerCharacter)
+	{
+		UPFCombatComponent* CombatComponent = PlayerCharacter->FindComponentByClass<UPFCombatComponent>();
+		if (CombatComponent)
+		{
+			CombatComponent->AddGrenades(ItemAmount);
+		}
+	}
+	Super::OnPickup(PlayerCharacter);
 }
-
-// Called when the game starts or when spawned
-void APFGrenadeItem::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
-
-// Called every frame
-void APFGrenadeItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-

@@ -2,25 +2,26 @@
 
 
 #include "Item/PFAmmoItem.h"
+#include "Character/PFPlayerCharacter.h"
+#include "Character/PFCombatComponent.h"
 
-
-// Sets default values
 APFAmmoItem::APFAmmoItem()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
 }
 
-// Called when the game starts or when spawned
-void APFAmmoItem::BeginPlay()
+void APFAmmoItem::OnPickup(APFPlayerCharacter* PlayerCharacter)
 {
-	Super::BeginPlay();
+	if (!PlayerCharacter) return;
+
+	UPFCombatComponent* CombatComponent = PlayerCharacter->FindComponentByClass<UPFCombatComponent>();
+	if (CombatComponent)
+	{
+		// 3. 에디터(블루프린트)에 설정된 무기 타입과 총알 개수만큼 충전
+		CombatComponent->AddAmmo(TargetWeaponType, AmmoAmount);
+        
+		UE_LOG(LogTemp, Log, TEXT("[Item] %s 아이템이 플레이어에게 획득되었습니다."), *GetName());
 	
+	
+	}
+	Super::OnPickup(PlayerCharacter);
 }
-
-// Called every frame
-void APFAmmoItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-

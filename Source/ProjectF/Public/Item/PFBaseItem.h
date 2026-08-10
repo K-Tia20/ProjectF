@@ -6,20 +6,35 @@
 #include "GameFramework/Actor.h"
 #include "PFBaseItem.generated.h"
 
+class USphereComponent;
+class UStaticMeshComponent;
+
 UCLASS()
 class PROJECTF_API APFBaseItem : public AActor
 {
 	GENERATED_BODY()
-
-public:
-	// Sets default values for this actor's properties
+    
+public:    
 	APFBaseItem();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Components")
+	USphereComponent* CollisionSphere;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Components")
+	UStaticMeshComponent* ItemMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Info")
+	FString ItemDisplayName = TEXT("Default Item");
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Info")
+	int32 ItemAmount = 1;
+	
+	UFUNCTION()
+	virtual void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	// 4. 자식 클래스(탄약, 힐팩 등)들이 각자 다르게 구현할 핵심 가상 함수
+	virtual void OnPickup(class APFPlayerCharacter* PlayerCharacter);
 };

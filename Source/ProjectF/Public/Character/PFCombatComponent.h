@@ -1,27 +1,153 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "PFCombatComponent.generated.h"
+#include "Camera/CameraShakeBase.h"       
+#include "PFCombatComponent.generated.h"  
 
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
+{
+    Pistol UMETA(DisplayName = "Pistol"),
+    Rifle UMETA(DisplayName = "Rifle"),
+    Sword UMETA(DisplayName = "Sword") 
+};
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class PROJECTF_API UPFCombatComponent : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
-public:
-	// Sets default values for this component's properties
-	UPFCombatComponent();
+public: 
+    UPFCombatComponent();
+
+    
+    virtual void BeginPlay() override;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+    bool bIsGrenadeOnCooldown = false;
+    
+    UPROPERTY(EditAnywhere, Category = "Combat")
+    float GrenadeCooldown = 5.0f;
+ 
+    FTimerHandle GrenadeCooldownTimerHandle;
 
-public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
+    void ResetGrenadeCooldown() { bIsGrenadeOnCooldown = false; };
+
+public: 
+    UPROPERTY(VisibleAnywhere, Category = "Combat|Weapon")
+    UStaticMeshComponent* CurrentWeaponMesh;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Combat|Recoil")
+    TSubclassOf<UCameraShakeBase> FireCameraShakeClass;
+   
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|Grenade")
+    UStaticMeshComponent* HandGrenadeMesh;
+    
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void ExecuteMeleeHitCheck();
+
+    UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
+    void EquipWeapon(UStaticMesh* WeaponMesh);
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
+    class UAnimMontage* PistolFireMontage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
+    class UAnimMontage* RifleFireMontage;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation")
+    class UAnimMontage* SwordMontage;
+    
+   
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound")
+    class USoundBase* PistolFireSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound")
+    class USoundBase* RifleFireSound;
+    
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    FName DefaultPistolBoneName = TEXT("weapon_r");
+    
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void FireWeapon();
+
+    
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void StartFire(); 
+
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void StopFire();  
+
+    UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
+    bool SwitchWeapon(EWeaponType NewWeapon);
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Grenade")
+    class UAnimMontage* ThrowMontage;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Grenade")
+    TSubclassOf<class APFGrenade> GrenadeClass;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Grenade")
+    FName HandSocketName = TEXT("Hand_R_Socket");
+
+    void PlayThrowAnimation();
+
+    UFUNCTION(BlueprintCallable, Category = "Combat|Grenade")
+    void ExecuteThrow();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    EWeaponType CurrentWeapon = EWeaponType::Pistol;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    int32 CurrentAmmo = 15;
+
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    int32 MaxAmmo = 30;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    int32 PistolCurrentAmmo = 15;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    int32 RifleCurrentAmmo = 30;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    int32 SwordCurrentAmmo = 5;
+    
+    UFUNCTION(BlueprintCallable, Category = "Combat|Weapon")
+    void AddAmmo(EWeaponType WeaponType, int32 Amount);
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float FireRate = 0.15f;
+    
+    bool bCanFire = true;
+    
+    FTimerHandle FireTimerHandle;
+    
+    void ResetFire();
+
+    
+    UFUNCTION(BlueprintCallable, Category = "Combat|Grenade")
+    void AddGrenades(int32 Amount);
+
+    UFUNCTION(BlueprintPure, Category = "Combat|Grenade")
+    int32 GetGrenadeCount() const { return GrenadeCount; }
+    
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    int32 GrenadeCount = 3;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float AttackRange = 5000.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float AttackDamage = 25.f;
+
+private:
+    
+    FTimerHandle AutoFireTimerHandle; 
+    bool bIsAutomatic = false;       
 };
